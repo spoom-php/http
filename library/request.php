@@ -75,13 +75,16 @@ class Request extends Library {
 
     // define the current url object
     $scheme     = $this->_input->getString( 'meta:request.scheme', $this->_input->getString( 'https', 'off' ) != 'off' ? 'https' : 'http' );
-    $host       = $this->_input->getString( 'meta:server.name', $this->_input->getString( 'head:http.host', null ) );
+    $host = $this->_input->getString( 'meta:server.name', $this->_input->getString( 'header:http.host', null ) );
     $port       = $this->_input->getNumber( 'meta:server.port', $scheme == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS );
     $this->_url = Url::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:request.uri' ) );
 
     // define the web server base url
     $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
     $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:script.name' ) ), '/' ) . '/';
+
+    // log: debug
+    Page::getLog()->debug( 'Start a new request with {method} {url} URL', [ 'url' => (string) $this->_url, 'method' => strtoupper( $this->_method ) ] );
   }
 }
 /**
@@ -118,7 +121,7 @@ class RequestInput extends Multi {
   /**
    * Namespace for the http request headers. All index is in lowercase
    */
-  const NAMESPACE_HEAD = 'head';
+  const NAMESPACE_HEADER = 'header';
 
   /**
    * Internal request variable storage
@@ -172,7 +175,7 @@ class RequestInput extends Multi {
         self::NAMESPACE_GET     => $_GET,
         self::NAMESPACE_COOKIE  => $_COOKIE,
         self::NAMESPACE_META    => [ ],
-        self::NAMESPACE_HEAD    => [ ]
+        self::NAMESPACE_HEADER => [ ]
       ];
 
       // process files into a more logical format :)
@@ -199,9 +202,9 @@ class RequestInput extends Multi {
           }
           static::$storage[ self::NAMESPACE_META ][ $tmp[ 0 ] ][ $tmp[ 1 ] ] = $value;
 
-          // The 'HTTP_' variables goes to the head too
+          // The 'HTTP_' variables goes to the header too
           if( $tmp[ 0 ] == 'http' ) {
-            static::$storage[ self::NAMESPACE_HEAD ][ $tmp[ 1 ] ] = $value;
+            static::$storage[ self::NAMESPACE_HEADER ][ $tmp[ 1 ] ] = $value;
           }
         }
       }

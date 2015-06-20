@@ -12,7 +12,7 @@ class Stream extends Response {
   /**
    * Rewrite operation attempt
    */
-  const EXCEPTION_INVALID_WRITE = 'http#0W';
+  const EXCEPTION_INVALID_WRITE = 'http#11W';
 
   /**
    * Write new content to the buffer
@@ -33,7 +33,7 @@ class Stream extends Response {
 
       // check the output stream
       $output_info = is_resource( $this->output ) ? stream_get_meta_data( $this->output ) : null;
-      if( !$output_info || strpos( $output_info[ 'mode' ], 'w' ) === false ) {
+      if( !$output_info || !preg_match( '/(r\+|w\+?|a\+?|x\+?)/i', $output_info[ 'mode' ] ) ) {
         throw new Exception\Strict( self::EXCEPTION_INVALID_OUTPUT, [ 'info' => $output_info ] );
       } else {
 

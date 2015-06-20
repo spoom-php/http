@@ -24,10 +24,10 @@ class Buffer extends Response {
 
   /**
    * @param Request       $request The request object
-   * @param resource      $stream  The output stream resource
+   * @param resource $stream The output stream. Default is the 'php://output'
    * @param resource|null $buffer  The buffer stream. If it's not a resource than a memory stream will be used
    */
-  function __construct( Request $request, $stream, $buffer = null ) {
+  function __construct( Request $request, $stream = null, $buffer = null ) {
     parent::__construct( $request, $stream );
 
     $this->buffer = is_resource( $buffer ) ? $buffer : fopen( 'php://memory', 'w+' );
@@ -46,7 +46,7 @@ class Buffer extends Response {
 
     // check the buffer
     $buffer_info = is_resource( $this->buffer ) ? stream_get_meta_data( $this->buffer ) : null;
-    if( !$buffer_info || strpos( $buffer_info[ 'mode' ], 'w' ) === false || ( !$append && !$buffer_info[ 'seekable' ] ) ) {
+    if( !$buffer_info || !preg_match( '/(r\+|w\+?|a\+?|x\+?)/i', $buffer_info[ 'mode' ] ) || ( !$append && !$buffer_info[ 'seekable' ] ) ) {
 
       throw new Exception\Strict( self::EXCEPTION_INVALID_BUFFER, [ 'info' => $buffer_info ] );
 
@@ -71,7 +71,7 @@ class Buffer extends Response {
 
       // check the buffer
       $buffer_info = is_resource( $this->buffer ) ? stream_get_meta_data( $this->buffer ) : null;
-      if( !$buffer_info || !is_readable( $buffer_info[ 'uri' ] ) || !$buffer_info[ 'seekable' ] ) {
+      if( !$buffer_info || !preg_match( '/(r\+?|w\+|a\+|x\+)/i', $buffer_info[ 'mode' ] ) || !$buffer_info[ 'seekable' ] ) {
 
         throw new Exception\Strict( self::EXCEPTION_INVALID_BUFFER, [ 'info' => $buffer_info ] );
 
@@ -82,7 +82,7 @@ class Buffer extends Response {
 
         // check the output stream
         $output_info = is_resource( $this->output ) ? stream_get_meta_data( $this->output ) : null;
-        if( !$output_info || strpos( $output_info[ 'mode' ], 'w' ) === false ) throw new Exception\Strict( self::EXCEPTION_INVALID_OUTPUT, [ 'info' => $output_info ] );
+        if( !$output_info || !preg_match( '/(r\+|w\+?|a\+?|x\+?)/i', $output_info[ 'mode' ] ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_OUTPUT, [ 'info' => $output_info ] );
         else {
 
           // copy the buffer to the output

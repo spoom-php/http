@@ -207,13 +207,13 @@ abstract class Response extends Library {
 
   /**
    * @param Request  $request The HTTP request representation
-   * @param resource $stream  The output stream
+   * @param resource $stream The output stream. Default is the 'php://output'
    */
-  function __construct( Request $request, $stream ) {
+  function __construct( Request $request, $stream = null ) {
 
     $this->_header = new Storage\Single();
     $this->request = $request;
-    $this->output  = $stream;
+    $this->output = is_resource( $stream ) ? $stream : fopen( 'php://output', 'w' );
   }
 
   /**

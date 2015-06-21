@@ -10,5 +10,10 @@
   "#8C": "Cannot start the request",
   "#9C": "Cannot execute the request",
   "#10W": "Invalid request state",
-  "#11W": "Cannot rewrite the stream"
+  "#11W": "Cannot rewrite the stream",
+
+  "#12W": "Invalid query definition",
+  "#13W": "Invalid port number: {port}",
+  "#14W": "Cannot parse the url into components",
+  "#15W": "Cannot create url string from the stored components"
 }

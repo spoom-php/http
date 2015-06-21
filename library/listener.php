@@ -87,6 +87,6 @@ class Listener implements FeasibleInterface {
       $this->response->status = $this->exception instanceof Exception\Runtime ? Response::STATUS_BAD : Response::STATUS_INTERNAL;
     }
 
-    Helper::stop( $this->response );
+    Helper::stop( $this->request, $this->response );
   }
 }

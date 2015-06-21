@@ -2,6 +2,7 @@
 
 use Framework\Exception;
 use Framework\Extension;
+use Framework\Page;
 
 /**
  * Class Helper
@@ -73,6 +74,13 @@ abstract class Helper {
     if( self::$state != self::STATE_START ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
     else {
 
+      // log: debug
+      Page::getLog()->debug( 'Start a new request with {method} {url} URL', [
+        'url'    => (string) $request->url,
+        'method' => strtoupper( $request->method ),
+        'data'   => $request->input->convert()
+      ] );
+
       // set the new state value
       self::$state = self::STATE_RUN;
 
@@ -132,7 +140,7 @@ abstract class Helper {
    *
    * @throws Exception\Strict
    */
-  public static function stop( Response $response ) {
+  public static function stop( Request $request, Response $response ) {
 
     // prevent multiply runs
     if( self::$state != self::STATE_STOP ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
@@ -145,6 +153,16 @@ abstract class Helper {
       $extension = Extension::instance( 'http' );
       $extension->trigger( self::EVENT_STOP, [ 'response' => &$response ] );
 
+      // log: debug
+      Page::getLog()->debug( 'Send response for the {method} {url} request', [
+        'method'  => strtoupper( $request->method ),
+        'url'     => (string) $request->url,
+
+        'status'  => $response->status,
+        'message' => $response->message,
+        'header'  => $response->header
+      ] );
+      
       // send the response
       $response->send();
     }

@@ -24,21 +24,21 @@ class Url extends Library {
   /**
    * The query argument can't parsed into an array
    */
-  const EXCEPTION_INVALID_QUERY = '';
+  const EXCEPTION_INVALID_QUERY = 'http#12W';
   /**
    * The port is not a number. Argument:
    *  - port [mixed]: The port that is invalid
    */
-  const EXCEPTION_INVALID_PORT = '';
+  const EXCEPTION_INVALID_PORT = 'http#13W';
   /**
    * The URI definition can't be parsed into an Url instance
    */
-  const EXCEPTION_INVALID_DEFINITION = '';
+  const EXCEPTION_INVALID_DEFINITION = 'http#14W';
   /**
    * The Url can't converted into a string. Arguments:
    *  - component [array]: The URI component array that is invalid
    */
-  const EXCEPTION_INVALID_URI = '';
+  const EXCEPTION_INVALID_URI = 'http#15W';
 
   /**
    * Triggers before the url building. Arguments:
@@ -385,7 +385,7 @@ class Url extends Library {
     else if( is_array( $definition ) ) $components = $definition;
     else {
 
-      $components = @parse_url( $definition );
+      $components = parse_url( $definition );
       if( !is_array( $components ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_DEFINITION );
     }
 

@@ -239,12 +239,6 @@ abstract class Response extends Library {
 
     if( !$this->_sent ) {
 
-      // log: debug
-      Page::getLog()->debug( 'Send response for the {method} {url} request', [
-        'method' => strtoupper( $this->request->method ),
-        'url'    => (string) $this->request->url
-      ] );
-
       $this->_sent = true;
       if( headers_sent() ) throw new Exception\Strict( self::EXCEPTION_FAIL_SEND );
       else {
@@ -274,9 +268,6 @@ abstract class Response extends Library {
           $name = ucwords( $name );
           header( "{$name}: {$value}" );
         }
-
-        // log: debug
-        Page::getLog()->debug( 'Response headers', [ 'data' => $header ] );
       }
     }
   }

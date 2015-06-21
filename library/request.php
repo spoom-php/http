@@ -82,9 +82,6 @@ class Request extends Library {
     // define the web server base url
     $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
     $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:script.name' ) ), '/' ) . '/';
-
-    // log: debug
-    Page::getLog()->debug( 'Start a new request with {method} {url} URL', [ 'url' => (string) $this->_url, 'method' => strtoupper( $this->_method ) ] );
   }
 }
 /**
@@ -210,9 +207,6 @@ class RequestInput extends Multi {
       }
 
       // TODO parse request body if the content type is urlencoded (or form data?)
-
-      // log: debug
-      Page::getLog()->debug( 'Superglobals is successfuly parsed into the internal storage', static::$storage, '\Http\Request->read' );
     }
   }
 }

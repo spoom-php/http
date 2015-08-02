@@ -46,7 +46,7 @@ class Listener implements FeasibleInterface {
   /**
    * Init the HTTP request (if this is a http request)
    */
-  protected function frameworkPageStart() {
+  protected function frameworkRequestStart() {
 
     $this->request = new Request();
     try {
@@ -60,7 +60,7 @@ class Listener implements FeasibleInterface {
   /**
    * Run the HTTP request handlers for a Response object
    */
-  protected function frameworkPageRun() {
+  protected function frameworkRequestRun() {
 
     if( !$this->exception ) try {
 
@@ -75,7 +75,7 @@ class Listener implements FeasibleInterface {
    *
    * @throws Exception\Strict
    */
-  protected function frameworkPageStop() {
+  protected function frameworkRequestStop() {
 
     // setup default response if needed
     if( !$this->response ) {

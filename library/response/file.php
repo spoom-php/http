@@ -53,27 +53,6 @@ class File extends Buffer {
   protected $_download;
 
   /**
-   * @param string $name
-   * @param mixed  $value
-   */
-  function __set( $name, $value ) {
-
-    switch( $name ) {
-      case 'path':
-        $this->_path = $value !== null ? (string) $value : null;
-        break;
-      case 'name':
-        $this->_name = $value !== null ? (string) $value : null;
-        break;
-      case 'download':
-        $this->_download = (bool) $value;
-        break;
-      default:
-        parent::__set( $name, $value );
-    }
-  }
-
-  /**
    * @inheritdoc
    */
   public function send() {
@@ -103,5 +82,42 @@ class File extends Buffer {
         }
       }
     }
+  }
+
+  /**
+   * @return boolean
+   */
+  public function isDownload() {
+    return $this->_download;
+  }
+  /**
+   * @param boolean $value
+   */
+  public function setDownload( $value ) {
+    $this->_download = (bool) $value;
+  }
+  /**
+   * @return string
+   */
+  public function getName() {
+    return $this->_name;
+  }
+  /**
+   * @param string $value
+   */
+  public function setName( $value ) {
+    $this->_name = $value !== null ? (string) $value : null;
+  }
+  /**
+   * @return string
+   */
+  public function getPath() {
+    return $this->_path;
+  }
+  /**
+   * @param string $value
+   */
+  public function setPath( $value ) {
+    $this->_path = $value !== null ? (string) $value : null;
   }
 }

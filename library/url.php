@@ -153,100 +153,6 @@ class Url extends Library {
   }
 
   /**
-   * @param string $index
-   *
-   * @return null|string
-   */
-  public function __get( $index ) {
-
-    switch( $index ) {
-      case self::COMPONENT_SCHEME:
-      case self::COMPONENT_PASSWORD:
-      case self::COMPONENT_USER:
-      case self::COMPONENT_HOST:
-      case self::COMPONENT_PORT:
-      case self::COMPONENT_PATH:
-      case self::COMPONENT_QUERY:
-      case self::COMPONENT_FRAGMENT:
-        return isset( $this->_component[ $index ] ) ? $this->_component[ $index ] : null;
-    }
-
-    return parent::__get( $index );
-  }
-  /**
-   * @param string $index
-   *
-   * @return bool
-   */
-  public function __isset( $index ) {
-
-    switch( $index ) {
-      case self::COMPONENT_SCHEME:
-      case self::COMPONENT_PASSWORD:
-      case self::COMPONENT_USER:
-      case self::COMPONENT_HOST:
-      case self::COMPONENT_PORT:
-      case self::COMPONENT_PATH:
-      case self::COMPONENT_QUERY:
-      case self::COMPONENT_FRAGMENT:
-        return isset( $this->_component[ $index ] );
-    }
-
-    return parent::__isset( $index );
-  }
-  /**
-   * @param $name
-   * @param $value
-   *
-   * @throws Exception\Strict
-   */
-  public function __set( $name, $value ) {
-
-    switch( $name ) {
-      case self::COMPONENT_SCHEME:
-      case self::COMPONENT_PASSWORD:
-      case self::COMPONENT_USER:
-      case self::COMPONENT_HOST:
-
-        if( is_null( $value ) ) unset( $this->_component[ $name ] );
-        else $this->_component[ $name ] = (string) $value;
-
-        break;
-      case self::COMPONENT_PORT:
-
-        if( is_null( $value ) ) unset( $this->_component[ $name ] );
-        else if( !is_numeric( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_PORT, [ 'port' => $value ] );
-        else $this->_component[ $name ] = (int) $value;
-
-        break;
-      case self::COMPONENT_PATH:
-
-        if( is_null( $value ) ) unset( $this->_component[ $name ] );
-        else $this->_component[ $name ] = $value;
-
-        break;
-      case self::COMPONENT_QUERY:
-
-        if( is_null( $value ) ) unset( $this->_component[ $name ] );
-        else if( is_array( $value ) ) $this->_component[ $name ] = $value;
-        else if( !is_string( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_QUERY );
-        else {
-
-          $this->_component[ $name ] = [ ];
-          parse_str( $value, $this->_component[ $name ] );
-        }
-
-        break;
-      case self::COMPONENT_FRAGMENT:
-
-        if( is_null( $value ) || trim( $value, ' #' ) == '' ) unset( $this->_component[ $name ] );
-        else $this->_component[ $name ] = ltrim( $value, '#' );
-
-        break;
-    }
-  }
-
-  /**
    * Build with default arguments
    *
    * @return string
@@ -369,6 +275,129 @@ class Url extends Library {
     }
 
     return $this;
+  }
+
+  /**
+   * @return string|null
+   */
+  public function getScheme() {
+    return isset( $this->_component[ self::COMPONENT_SCHEME ] ) ? $this->_component[ self::COMPONENT_SCHEME ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setScheme( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_SCHEME ] );
+    else $this->_component[ self::COMPONENT_SCHEME ] = (string) $value;
+  }
+  /**
+   * @return string|null
+   */
+  public function getPassword() {
+    return isset( $this->_component[ self::COMPONENT_PASSWORD ] ) ? $this->_component[ self::COMPONENT_PASSWORD ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setPassword( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PASSWORD ] );
+    else $this->_component[ self::COMPONENT_PASSWORD ] = (string) $value;
+  }
+  /**
+   * @return string|null
+   */
+  public function getUser() {
+    return isset( $this->_component[ self::COMPONENT_USER ] ) ? $this->_component[ self::COMPONENT_USER ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setUser( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_USER ] );
+    else $this->_component[ self::COMPONENT_USER ] = (string) $value;
+  }
+  /**
+   * @return string|null
+   */
+  public function getHost() {
+    return isset( $this->_component[ self::COMPONENT_HOST ] ) ? $this->_component[ self::COMPONENT_HOST ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setHost( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_HOST ] );
+    else $this->_component[ self::COMPONENT_HOST ] = (string) $value;
+  }
+  /**
+   * @return int|null
+   */
+  public function getPort() {
+    return isset( $this->_component[ self::COMPONENT_PORT ] ) ? $this->_component[ self::COMPONENT_PORT ] : null;
+  }
+  /**
+   * @param int|null $value
+   *
+   * @throws Exception
+   */
+  public function setPort( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PORT ] );
+    else if( !is_numeric( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_PORT, [ 'port' => $value ] );
+    else $this->_component[ self::COMPONENT_PORT ] = (int) $value;
+  }
+  /**
+   * @return string|null
+   */
+  public function getPath() {
+    return isset( $this->_component[ self::COMPONENT_PATH ] ) ? $this->_component[ self::COMPONENT_PATH ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setPath( $value ) {
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PATH ] );
+    else $this->_component[ self::COMPONENT_PATH ] = $value;
+  }
+  /**
+   * @return array[]|null
+   */
+  public function getQuery() {
+    return isset( $this->_component[ self::COMPONENT_QUERY ] ) ? $this->_component[ self::COMPONENT_QUERY ] : null;
+  }
+  /**
+   * @param array|string $value
+   *
+   * @throws Exception
+   */
+  public function setQuery( $value ) {
+
+    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_QUERY ] );
+    else if( is_array( $value ) ) $this->_component[ self::COMPONENT_QUERY ] = $value;
+    else if( !is_string( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_QUERY );
+    else {
+
+      $this->_component[ self::COMPONENT_QUERY ] = [ ];
+      parse_str( $value, $this->_component[ self::COMPONENT_QUERY ] );
+    }
+  }
+  /**
+   * @return string|null
+   */
+  public function getFragment() {
+    return isset( $this->_component[ self::COMPONENT_FRAGMENT ] ) ? $this->_component[ self::COMPONENT_FRAGMENT ] : null;
+  }
+  /**
+   * @param string|null $value
+   */
+  public function setFragment( $value ) {
+    if( is_null( $value ) || trim( $value, ' #' ) == '' ) unset( $this->_component[ self::COMPONENT_FRAGMENT ] );
+    else $this->_component[ self::COMPONENT_FRAGMENT ] = ltrim( $value, '#' );
+  }
+  /**
+   * @return array
+   */
+  public function getComponent() {
+    return $this->_component;
   }
 
   /**

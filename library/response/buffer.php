@@ -24,7 +24,7 @@ class Buffer extends Response {
 
   /**
    * @param Request       $request The request object
-   * @param resource $stream The output stream. Default is the 'php://output'
+   * @param resource      $stream  The output stream. Default is the 'php://output'
    * @param resource|null $buffer  The buffer stream. If it's not a resource than a memory stream will be used
    */
   function __construct( Request $request, $stream = null, $buffer = null ) {
@@ -82,7 +82,9 @@ class Buffer extends Response {
 
         // check the output stream
         $output_info = is_resource( $this->output ) ? stream_get_meta_data( $this->output ) : null;
-        if( !$output_info || !preg_match( '/(r\+|w\+?|a\+?|x\+?)/i', $output_info[ 'mode' ] ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_OUTPUT, [ 'info' => $output_info ] );
+        if( !$output_info ||
+            !preg_match( '/(r\+|w\+?|a\+?|x\+?)/i', $output_info[ 'mode' ] )
+        ) throw new Exception\Strict( self::EXCEPTION_INVALID_OUTPUT, [ 'info' => $output_info ] );
         else {
 
           // copy the buffer to the output

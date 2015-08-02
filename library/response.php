@@ -2,17 +2,16 @@
 
 use Framework\Exception;
 use Framework\Helper\Library;
-use Framework\Page;
 use Framework\Storage;
 
 /**
  * Class Response
  * @package Http
  *
- * @property-read Storage\Single $header Header data storage
- * @property-read boolean        $sent   The response is already sent or not
- * @property      int            status  The status code of the response
- * @property      int            message The status message if the response
+ * @property-read Storage $header Header data storage
+ * @property-read boolean $sent   The response is already sent or not
+ * @property      int     status  The status code of the response
+ * @property      int     message The status message if the response
  */
 abstract class Response extends Library {
 
@@ -69,7 +68,8 @@ abstract class Response extends Library {
    */
   const STATUS_OTHER = 303;
   /**
-   * If the client has performed a conditional GET request and access is allowed, but the document has not been modified, the server SHOULD respond with this status code
+   * If the client has performed a conditional GET request and access is allowed, but the document has not been modified, the server SHOULD respond with this
+   * status code
    */
   const STATUS_UNMODIFIED = 304;
 
@@ -100,7 +100,8 @@ abstract class Response extends Library {
    */
   const STATUS_UNSUPPORTED = 405;
   /**
-   * The resource identified by the request is only capable of generating response entities which have content characteristics not acceptable according to the accept headers sent in the request
+   * The resource identified by the request is only capable of generating response entities which have content characteristics not acceptable according to the
+   * accept headers sent in the request
    */
   const STATUS_UNACCEPTABLE = 406;
   /**
@@ -201,35 +202,19 @@ abstract class Response extends Library {
   /**
    * Storage for the header fields
    *
-   * @var Storage\Single
+   * @var Storage
    */
   protected $_header;
 
   /**
    * @param Request  $request The HTTP request representation
-   * @param resource $stream The output stream. Default is the 'php://output'
+   * @param resource $stream  The output stream. Default is the 'php://output'
    */
   function __construct( Request $request, $stream = null ) {
 
-    $this->_header = new Storage\Single();
+    $this->_header = new Storage();
     $this->request = $request;
-    $this->output = is_resource( $stream ) ? $stream : fopen( 'php://output', 'w' );
-  }
-
-  /**
-   * @param string $name
-   * @param mixed  $value
-   */
-  function __set( $name, $value ) {
-
-    switch( $name ) {
-      case 'status':
-        $this->_status = $value !== null ? (int) $value : null;
-        break;
-      case 'message':
-        $this->_message = $value !== null ? (string) $value : null;
-        break;
-    }
+    $this->output  = is_resource( $stream ) ? $stream : fopen( 'php://output', 'w' );
   }
 
   /**
@@ -280,4 +265,42 @@ abstract class Response extends Library {
    * @return $this
    */
   abstract public function write( $content, $append = true );
+
+  /**
+   * @return boolean
+   */
+  public function isSent() {
+    return $this->_sent;
+  }
+  /**
+   * @return Storage
+   */
+  public function getHeader() {
+    return $this->_header;
+  }
+  /**
+   * @return string
+   */
+  public function getMessage() {
+    return $this->_message;
+  }
+  /**
+   * @param string $value
+   */
+  public function setMessage( $value ) {
+    $this->_message = $value !== null ? (string) $value : null;
+  }
+  /**
+   * @return int
+   */
+  public function getStatus() {
+    return $this->_status;
+  }
+  /**
+   * @param int $value
+   */
+  public function setStatus( $value ) {
+    $this->_status = $value !== null ? (int) $value : null;
+  }
+
 }

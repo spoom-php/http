@@ -1,8 +1,7 @@
 <?php namespace Http;
 
 use Framework\Helper\Library;
-use Framework\Page;
-use Framework\Storage\Multi;
+use Framework\Storage;
 
 /**
  * Class Request
@@ -75,7 +74,7 @@ class Request extends Library {
 
     // define the current url object
     $scheme     = $this->_input->getString( 'meta:request.scheme', $this->_input->getString( 'https', 'off' ) != 'off' ? 'https' : 'http' );
-    $host = $this->_input->getString( 'meta:server.name', $this->_input->getString( 'header:http.host', null ) );
+    $host       = $this->_input->getString( 'meta:server.name', $this->_input->getString( 'header:http.host', null ) );
     $port       = $this->_input->getNumber( 'meta:server.port', $scheme == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS );
     $this->_url = Url::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:request.uri' ) );
 
@@ -83,12 +82,37 @@ class Request extends Library {
     $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
     $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:script.name' ) ), '/' ) . '/';
   }
+
+  /**
+   * @return Url
+   */
+  public function getUrl() {
+    return $this->_url;
+  }
+  /**
+   * @return Url
+   */
+  public function getUrlBase() {
+    return $this->_url_base;
+  }
+  /**
+   * @return string
+   */
+  public function getMethod() {
+    return $this->_method;
+  }
+  /**
+   * @return RequestInput
+   */
+  public function getInput() {
+    return $this->_input;
+  }
 }
 /**
  * Class RequestInput
  * @package Http
  */
-class RequestInput extends Multi {
+class RequestInput extends Storage {
 
   /**
    * Namespace for $_REQUEST superglobal
@@ -133,13 +157,13 @@ class RequestInput extends Multi {
    * @param string    $namespace
    * @param int|mixed $caching
    */
-  public function __construct( $namespace = self::NAMESPACE_REQUEST, $caching = Multi::CACHE_NONE ) {
-    parent::__construct( $namespace, null, $caching );
+  public function __construct( $namespace = self::NAMESPACE_REQUEST, $caching = Storage::CACHE_NONE ) {
+    parent::__construct( null, $namespace, $caching );
 
     self::read();
     foreach( static::$storage as $index => $value ) {
 
-      $this->addr( $value, $index );
+      $this->connect( $value, $index );
       unset( $value );
     }
   }
@@ -172,7 +196,7 @@ class RequestInput extends Multi {
         self::NAMESPACE_GET     => $_GET,
         self::NAMESPACE_COOKIE  => $_COOKIE,
         self::NAMESPACE_META    => [ ],
-        self::NAMESPACE_HEADER => [ ]
+        self::NAMESPACE_HEADER  => [ ]
       ];
 
       // process files into a more logical format :)

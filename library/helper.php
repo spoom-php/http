@@ -1,8 +1,8 @@
 <?php namespace Http;
 
+use Framework;
 use Framework\Exception;
 use Framework\Extension;
-use Framework\Page;
 
 /**
  * Class Helper
@@ -75,10 +75,10 @@ abstract class Helper {
     else {
 
       // log: debug
-      Page::getLog()->debug( 'Start a new request with {method} {url} URL', [
+      Framework\Request::getLog()->debug( 'Start a new request with {method} {url} URL', [
         'url'    => (string) $request->url,
         'method' => strtoupper( $request->method ),
-        'data'   => $request->input->convert()
+        'data'   => $request->input->source
       ] );
 
       // set the new state value
@@ -136,6 +136,7 @@ abstract class Helper {
   /**
    * Send the the HTTP request response
    *
+   * @param Request  $request
    * @param Response $response The response object for the request
    *
    * @throws Exception\Strict
@@ -154,7 +155,7 @@ abstract class Helper {
       $extension->trigger( self::EVENT_STOP, [ 'response' => &$response ] );
 
       // log: debug
-      Page::getLog()->debug( 'Send response for the {method} {url} request', [
+      Framework\Request::getLog()->debug( 'Send response for the {method} {url} request', [
         'method'  => strtoupper( $request->method ),
         'url'     => (string) $request->url,
 
@@ -162,7 +163,7 @@ abstract class Helper {
         'message' => $response->message,
         'header'  => $response->header
       ] );
-      
+
       // send the response
       $response->send();
     }
@@ -179,7 +180,7 @@ abstract class Helper {
 
     $extension = Extension::instance( 'http' );
     return in_array( PHP_SAPI, $extension->option( 'default:sapi!array', [ ] ) ) ||
-    ( isset( $_SERVER[ 'SERVER_PROTOCOL' ] ) && strpos( 'http', strtolower( $_SERVER[ 'SERVER_PROTOCOL' ] ) ) === 0 ) ||
-    isset( $_SERVER[ 'REQUEST_METHOD' ] );
+           ( isset( $_SERVER[ 'SERVER_PROTOCOL' ] ) && strpos( 'http', strtolower( $_SERVER[ 'SERVER_PROTOCOL' ] ) ) === 0 ) ||
+           isset( $_SERVER[ 'REQUEST_METHOD' ] );
   }
 } 

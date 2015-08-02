@@ -23,36 +23,37 @@ class Redirect extends Buffer {
   protected $_url;
 
   /**
-   * @param string $name
-   * @param mixed  $value
-   */
-  function __set( $name, $value ) {
-
-    switch( $name ) {
-      case 'url':
-        $this->_url = $value !== null ? Url::instance( $value ) : null;
-        break;
-      default:
-        parent::__set( $name, $value );
-    }
-  }
-
-  /**
    * @inheritdoc
    */
   public function send() {
 
-    if( !$this->_url ) throw new Exception\Strict( self::EXCEPTION_INVALID_URL );
-    else {
+    if( !$this->_sent ) {
 
-      // setup the redirect location
-      $this->_header->set( 'location', (string) $this->_url );
+      if( !$this->_url ) throw new Exception\Strict( self::EXCEPTION_INVALID_URL );
+      else {
 
-      // setup the default 'See Other' status code if there is no other
-      if( empty( $this->_status ) ) $this->_status = static::STATUS_OTHER;
+        // setup the redirect location
+        $this->_header->set( 'location', (string) $this->_url );
 
-      // send the response like normal
-      parent::send();
+        // setup the default 'See Other' status code if there is no other
+        if( empty( $this->_status ) ) $this->_status = static::STATUS_OTHER;
+
+        // send the response like normal
+        parent::send();
+      }
     }
+  }
+
+  /**
+   * @return Url|string
+   */
+  public function getUrl() {
+    return $this->_url;
+  }
+  /**
+   * @param Url|string $value
+   */
+  public function setUrl( $value ) {
+    $this->_url = $value !== null ? Url::instance( $value ) : null;
   }
 }

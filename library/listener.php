@@ -22,7 +22,7 @@ class Listener implements FeasibleInterface {
   /**
    * The response objet for the HTTP request
    *
-   * @var Response
+   * @var ResponseInterface
    */
   private $response;
   /**
@@ -79,12 +79,12 @@ class Listener implements FeasibleInterface {
 
     // setup default response if needed
     if( !$this->response ) {
-      $this->response = new Response\Buffer( $this->request );
+      $this->response = new Response\Blank( $this->request );
     }
 
     // setup default http status if needed
-    if( $this->exception && empty( $this->response->status ) ) {
-      $this->response->status = $this->exception instanceof Exception\Runtime ? Response::STATUS_BAD : Response::STATUS_INTERNAL;
+    if( $this->exception && !$this->response->getStatus() ) {
+      $this->response->setStatus( $this->exception instanceof Exception\Runtime ? Response::STATUS_BAD : Response::STATUS_INTERNAL );
     }
 
     Helper::stop( $this->request, $this->response );

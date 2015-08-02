@@ -68,8 +68,8 @@ class File extends Buffer {
         if( !$this->_header->exist( 'content-length' ) ) $this->_header->set( 'content-length', filesize( $this->_path ) );
         if( !$this->_header->exist( 'content-disposition' ) ) {
 
-          $name = empty( $this->_name ) ? pathinfo( $this->_path, PATHINFO_BASENAME ) : $this->_name;
-          $this->_header->set( 'content-disposition', ( $this->_download ? 'attachment' : 'inline' ) . '; filename="' . $name . '"' );
+          $this->_name = empty( $this->_name ) ? pathinfo( $this->_path, PATHINFO_BASENAME ) : $this->_name;
+          $this->_header->set( 'content-disposition', ( $this->_download ? 'attachment' : 'inline' ) . '; filename="' . $this->_name . '"' );
         }
 
         // open and setup the file resource as the buffer

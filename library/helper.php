@@ -29,8 +29,8 @@ abstract class Helper {
    */
   const EVENT_START = 'start';
   /**
-   * Triggers when the HTTP request run. The prevention or exception throw will cancel the request with an error. The handlers MAY return a Response object
-   * that will be used to complete the request. Only the first Response object will be used. Arguments:
+   * Triggers when the HTTP request run. The prevention or exception throw will cancel the request with an error. The handlers MAY return a ResponseInterface object
+   * that will be used to complete the request. Only the first ResponseInteface object will be used. Arguments:
    *  - request [Request]: The request object
    */
   const EVENT_RUN = 'run';
@@ -70,7 +70,7 @@ abstract class Helper {
    */
   public static function start( Request $request ) {
 
-    // prevent multiply runs
+    // prevent multiple runs
     if( self::$state != self::STATE_START ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
     else {
 
@@ -98,13 +98,13 @@ abstract class Helper {
    *
    * @param Request $request The HTTP request object
    *
-   * @return Response The response for the HTTP request
+   * @return ResponseInterface The response for the HTTP request
    * @throws Exception\Strict
    * @throws \Exception
    */
   public static function run( Request $request ) {
 
-    // prevent multiply runs
+    // prevent multiple runs
     if( self::$state != self::STATE_RUN ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
     else {
 
@@ -122,28 +122,25 @@ abstract class Helper {
 
         // search for the response object in the results
         foreach( $event->result as $response ) {
-          if( $response instanceof Response ) return $response;
+          if( $response instanceof ResponseInterface ) return $response;
         }
 
         // return a default response
-        $response         = new Response\Buffer( $request );
-        $response->status = Response::STATUS_CONTENT_NO;
-
-        return $response;
+        return new Response\Blank( $request );
       }
     }
   }
   /**
    * Send the the HTTP request response
    *
-   * @param Request  $request
-   * @param Response $response The response object for the request
+   * @param Request           $request
+   * @param ResponseInterface $response The response object for the request
    *
    * @throws Exception\Strict
    */
-  public static function stop( Request $request, Response $response ) {
+  public static function stop( Request $request, ResponseInterface $response ) {
 
-    // prevent multiply runs
+    // prevent multiple runs
     if( self::$state != self::STATE_STOP ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
     else {
 
@@ -159,9 +156,9 @@ abstract class Helper {
         'method'  => strtoupper( $request->method ),
         'url'     => (string) $request->url,
 
-        'status'  => $response->status,
-        'message' => $response->message,
-        'header'  => $response->header
+        'status'  => $response->getStatus(),
+        'message' => $response->getMessage(),
+        'header'  => $response->getHeader()
       ] );
 
       // send the response

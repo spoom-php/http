@@ -2,27 +2,14 @@
 
 use Framework\Exception;
 use Framework\Helper\Library;
+use Framework\Helper\LibraryInterface;
 use Framework\Storage;
 
 /**
- * Class Response
+ * Interface ResponseInterface
  * @package Http
- *
- * @property-read Storage $header Header data storage
- * @property-read boolean $sent   The response is already sent or not
- * @property      int     status  The status code of the response
- * @property      int     message The status message if the response
  */
-abstract class Response extends Library {
-
-  /**
-   * The headers already sent, cannot setup the headers
-   */
-  const EXCEPTION_FAIL_SEND = 'http#1W';
-  /**
-   * Can't write the output stream
-   */
-  const EXCEPTION_INVALID_OUTPUT = 'http#2C';
+interface ResponseInterface extends LibraryInterface {
 
   /**
    * Standard response for successful HTTP requests. The actual response will depend on
@@ -133,6 +120,65 @@ abstract class Response extends Library {
    * Generally, this is a temporary state.
    */
   const STATUS_UNAVAILABLE = 503;
+
+  /**
+   * Send the response (with the header) to the stored output stream
+   */
+  public function send();
+  /**
+   * Write content to the response body
+   *
+   * @param mixed $content The content
+   * @param bool  $append  Append or rewrite the exists content
+   *
+   * @return $this
+   */
+  public function write( $content, $append = true );
+
+  /**
+   * @return boolean
+   */
+  public function isSent();
+  /**
+   * @return Storage
+   */
+  public function getHeader();
+  /**
+   * @return string
+   */
+  public function getMessage();
+  /**
+   * @param string $value
+   */
+  public function setMessage( $value );
+  /**
+   * @return int
+   */
+  public function getStatus();
+  /**
+   * @param int $value
+   */
+  public function setStatus( $value );
+}
+/**
+ * Class Response
+ * @package Http
+ *
+ * @property-read Storage $header  Header data storage
+ * @property-read boolean $sent    The response is already sent or not
+ * @property      int     $status  The status code of the response
+ * @property      int     $message The status message if the response
+ */
+abstract class Response extends Library implements ResponseInterface {
+
+  /**
+   * The headers already sent, cannot setup the headers
+   */
+  const EXCEPTION_FAIL_SEND = 'http#1W';
+  /**
+   * Can't write the output stream
+   */
+  const EXCEPTION_INVALID_OUTPUT = 'http#2C';
 
   /**
    * The status codes default reason phrases
@@ -302,5 +348,4 @@ abstract class Response extends Library {
   public function setStatus( $value ) {
     $this->_status = $value !== null ? (int) $value : null;
   }
-
 }

@@ -15,5 +15,6 @@
   "#12W": "Invalid query definition",
   "#13W": "Invalid port number: {port}",
   "#14W": "Cannot parse the url into components",
-  "#15W": "Cannot create url string from the stored components"
+  "#15W": "Cannot create url string from the stored components",
+  "#16N": "Cannot set the empty response body" 
 }

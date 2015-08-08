@@ -1,5 +1,7 @@
 <?php namespace Http;
 
+use Framework\Extension;
+use Framework\Helper\Enumerable;
 use Framework\Helper\Library;
 use Framework\Storage;
 
@@ -15,17 +17,41 @@ use Framework\Storage;
 class Request extends Library {
 
   /**
+   * Triggered BEFORE the body parser of the request. Can prevent the native parsing. Arguments:
+   *  - &body [resource]: The body content stream (it is the 'php://input' so it can read only once! Replace it with an other stream if you read this out)
+   *  - meta [Storage]: The request metadata
+   *  - &data [array]: The request' final data storage
+   */
+  const EVENT_BODY = 'request.body';
+
+  /**
    * Requests a representation of the specified resource. Requests using GET should only retrieve data and should have no other effect
    */
   const METHOD_GET = 'get';
   /**
-   * Asks for the response identical to the one that would correspond to a GET request, but without the response body
+   * This method can be used for obtaining metainformation about the entity implied by the request without transferring the entity-body itself
    */
-  const METHOD_HEAD    = 'head';
-  const METHOD_TRACE   = 'trace';
+  const METHOD_HEAD = 'head';
+  /**
+   * Allows the client to see what is being received at the other end of the request chain and use that data for testing or diagnostic information
+   */
+  const METHOD_TRACE = 'trace';
+  /**
+   * This method allows the client to determine the options and/or requirements associated with a resource, or the capabilities of a server, without implying a
+   * resource action or initiating a resource retrieval
+   */
   const METHOD_OPTIONS = 'options';
-  const METHOD_POST    = 'post';
-  const METHOD_PUT     = 'put';
+  /**
+   * The method is used to request that the origin server accept the entity enclosed in the request as a new subordinate of the resource identified by the
+   * Request-URI in the Request-Line
+   */
+  const METHOD_POST = 'post';
+  /**
+   * The method requests that the enclosed entity be stored under the supplied Request-URI. If the Request-URI refers to an already existing resource, the
+   * enclosed entity SHOULD be considered as a modified version of the one residing on the origin server. If the Request-URI does not point to an existing
+   * resource, and that URI is capable of being defined as a new resource by the requesting user agent, the origin server can create the resource with that URI
+   */
+  const METHOD_PUT = 'put';
   /**
    * Applies partial modifications to a resource
    */
@@ -33,8 +59,7 @@ class Request extends Library {
   /**
    * Deletes the specified resource
    */
-  const METHOD_DELETE  = 'delete';
-  const METHOD_CONNECT = 'connect';
+  const METHOD_DELETE = 'delete';
 
   /**
    * The request url representation
@@ -64,23 +89,151 @@ class Request extends Library {
   protected $_input;
 
   /**
+   * @param  array    $data The input data storage (using the RequestInput::NAMESPACE_* namespaces)
+   * @param  resource $body The body stream
+   * @param Storage   $meta The request metadata
+   *
    * @throws \Framework\Exception\Strict
    */
-  public function __construct() {
+  public function __construct( $data, $body, Storage $meta ) {
 
-    // define simple properties 
-    $this->_input  = new RequestInput();
+    // process the request body
+    $this->process( $body, $meta, $data );
+    $data[ RequestInput::NAMESPACE_META ] = $meta->getSource();
+
+    // define simple properties
+    $this->_input  = new RequestInput( $data );
     $this->_method = mb_strtolower( $this->_input->getString( 'meta:request.method', 'get' ) );
 
     // define the current url object
-    $scheme     = $this->_input->getString( 'meta:request.scheme', $this->_input->getString( 'https', 'off' ) != 'off' ? 'https' : 'http' );
-    $host       = $this->_input->getString( 'meta:server.name', $this->_input->getString( 'header:http.host', null ) );
-    $port       = $this->_input->getNumber( 'meta:server.port', $scheme == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS );
-    $this->_url = Url::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:request.uri' ) );
+    $scheme     = $this->_input->getString( 'meta:url.scheme', 'http' );
+    $host       = $this->_input->getString( 'meta:url.host', null );
+    $port       = $this->_input->getNumber( 'meta:url.port', $scheme == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS );
+    $this->_url = Url::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:url.route' ) );
 
     // define the web server base url
     $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
-    $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:script.name' ) ), '/' ) . '/';
+    $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:request.path' ) ), '/' ) . '/';
+  }
+
+  /**
+   * Process the request body into data fields
+   *
+   * @param resource $body The body stream
+   * @param Storage  $meta The request' meta data
+   * @param array    $data The request' data
+   */
+  private function process( $body, Storage $meta, &$data ) {
+
+    // trigger the process event
+    $extension = Extension::instance( 'http' );
+    $event     = $extension->trigger( self::EVENT_BODY, [
+      'body' => &$body,
+      'meta' => $meta,
+      'data' => &$data
+    ] );
+
+    if( !$event->isPrevented() && is_resource( $body ) ) {
+
+      // choose processor based on the body format
+      $format = $meta->getString( 'body.format' );
+      switch( $format ) {
+
+        // handle multipart messages
+        case 'multipart/form-data':
+
+          // temporary data storages
+          $raw_post = [ ];
+          $raw_file = [ ];
+
+          // process the multipart data into the raw containers (to process the array names later)
+          $multipart = Helper::fromMultipart( $body );
+          foreach( $multipart as $value ) {
+            if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
+
+              $stream = stream_get_meta_data( $value->content );
+              $uri    = $stream[ 'uri' ];
+              $tmp    = [
+                'name'     => $value->meta[ 'content-disposition' ][ 'filename' ],
+                'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
+                'size'     => is_file( $uri ) ? filesize( $uri ) : null,
+                'tmp_name' => $uri,
+                'error'    => 0 // FIXME calculate limits and set this value
+              ];
+
+              $raw_file[] = [
+                'name'  => $value->meta[ 'content-disposition' ][ 'name' ],
+                'value' => $tmp
+              ];
+
+            } else {
+              $raw_post[] = [
+                'name'  => $value->meta[ 'content-disposition' ][ 'name' ],
+                'value' => $value->content
+              ];
+            }
+          }
+
+          // parse the post names
+          if( count( $raw_post ) ) {
+
+            $query = '';
+            foreach( $raw_post as $key => $value ) {
+              $query .= '&' . $value[ 'name' ] . '=' . urlencode( $key );
+            }
+
+            $keys = [ ];
+            parse_str( substr( $query, 1 ), $keys );
+            array_walk_recursive( $keys, function ( &$key ) use ( $raw_post ) {
+              $key = $raw_post[ $key ][ 'value' ];
+            } );
+            $data[ RequestInput::NAMESPACE_POST ] += $keys;
+          }
+          // parse the file names
+          if( count( $raw_file ) ) {
+
+            $query = '';
+            foreach( $raw_file as $key => $value ) {
+              $query .= '&' . $value[ 'name' ] . '=' . urlencode( $key );
+            }
+
+            $keys = [ ];
+            parse_str( substr( $query, 1 ), $keys );
+            array_walk_recursive( $keys, function ( &$key ) use ( $raw_file ) {
+              $key = $raw_file[ $key ][ 'value' ];
+            } );
+            $data[ RequestInput::NAMESPACE_FILE ] += $keys;
+          }
+
+          break;
+
+        // handle message like a query string
+        case 'application/x-www-form-urlencoded':
+
+          $tmp = stream_get_contents( $body );
+          parse_str( $tmp, $data[ RequestInput::NAMESPACE_POST ] );
+
+          break;
+
+        // handle json messages
+        case 'application/json':
+        case 'text/json':
+
+          $tmp                                  = stream_get_contents( $body );
+          $data[ RequestInput::NAMESPACE_POST ] = Enumerable::fromJson( $tmp, true ) + $data[ RequestInput::NAMESPACE_POST ];
+
+          break;
+
+        // handle xml messages
+        case 'application/xml':
+        case 'text/xml':
+
+          $tmp                                  = stream_get_contents( $body );
+          $data[ RequestInput::NAMESPACE_POST ] = Enumerable::fromXml( $tmp ) + $data[ RequestInput::NAMESPACE_POST ];
+
+          break;
+      }
+    }
   }
 
   /**
@@ -115,7 +268,7 @@ class Request extends Library {
 class RequestInput extends Storage {
 
   /**
-   * Namespace for $_REQUEST superglobal
+   * Mix the 'get' and the 'post' container
    */
   const NAMESPACE_REQUEST = 'request';
   /**
@@ -139,98 +292,13 @@ class RequestInput extends Storage {
    * The second piece can be accessed with dot notation. In the second piece the remaining '_' characters replaced with '-'
    */
   const NAMESPACE_META = 'meta';
-  /**
-   * Namespace for the http request headers. All index is in lowercase
-   */
-  const NAMESPACE_HEADER = 'header';
 
   /**
-   * Internal request variable storage
-   *
-   * @var array
+   * @param array $data The input storage initial data
    */
-  protected static $storage = null;
+  public function __construct( $data ) {
 
-  // TODO add 'body' property for the request body access
-
-  /**
-   * @param string    $namespace
-   * @param int|mixed $caching
-   */
-  public function __construct( $namespace = self::NAMESPACE_REQUEST, $caching = Storage::CACHE_NONE ) {
-    parent::__construct( null, $namespace, $caching );
-
-    self::read();
-    foreach( static::$storage as $index => $value ) {
-
-      $this->connect( $value, $index );
-      unset( $value );
-    }
-  }
-
-  /**
-   * Create, remove, update a cookie
-   *
-   * TODO implement setcookie with an event ( secure the cookie, or else )
-   *
-   * @param string      $index
-   * @param mixed       $value
-   * @param int|null    $expire
-   * @param string|null $url
-   */
-  public function setCookie( $index, $value, $expire = null, $url = null ) {
-    setcookie( $index, $value, $expire, $url );
-  }
-
-  /**
-   * Read the PHP superglobals into the internal storage
-   */
-  private static function read() {
-
-    if( static::$storage === null ) {
-
-      static::$storage = [
-        self::NAMESPACE_REQUEST => $_REQUEST,
-        self::NAMESPACE_POST    => $_POST,
-        self::NAMESPACE_FILE    => [ ],
-        self::NAMESPACE_GET     => $_GET,
-        self::NAMESPACE_COOKIE  => $_COOKIE,
-        self::NAMESPACE_META    => [ ],
-        self::NAMESPACE_HEADER  => [ ]
-      ];
-
-      // process files into a more logical format :)
-      foreach( $_FILES as $name => $value ) {
-
-        if( !is_array( $value[ 'name' ] ) ) static::$storage[ self::NAMESPACE_FILE ][ $name ] = $value;
-        else foreach( $value[ 'name' ] as $i => $tmp ) {
-
-          static::$storage[ self::NAMESPACE_FILE ][ $i ] = [ ];
-          foreach( $value as $name2 => $value2 ) static::$storage[ self::NAMESPACE_FILE ][ $i ][ $name2 ] = $value2;
-        }
-      }
-
-      // process the server variables 
-      foreach( $_SERVER as $name => $value ) {
-
-        $tmp = explode( '_', mb_strtolower( $name ), 2 );
-        if( count( $tmp ) == 1 ) static::$storage[ self::NAMESPACE_META ][ $tmp[ 0 ] ] = $value;
-        else {
-
-          $tmp[ 1 ] = str_replace( '_', '-', $tmp[ 1 ] );
-          if( !isset( static::$storage[ self::NAMESPACE_META ][ $tmp[ 0 ] ] ) ) {
-            static::$storage[ self::NAMESPACE_META ][ $tmp[ 0 ] ] = [ ];
-          }
-          static::$storage[ self::NAMESPACE_META ][ $tmp[ 0 ] ][ $tmp[ 1 ] ] = $value;
-
-          // The 'HTTP_' variables goes to the header too
-          if( $tmp[ 0 ] == 'http' ) {
-            static::$storage[ self::NAMESPACE_HEADER ][ $tmp[ 1 ] ] = $value;
-          }
-        }
-      }
-
-      // TODO parse request body if the content type is urlencoded (or form data?)
-    }
+    $data[ self::NAMESPACE_REQUEST ] = $data[ self::NAMESPACE_POST ] + $data[ self::NAMESPACE_GET ];
+    parent::__construct( $data, self::NAMESPACE_REQUEST, Storage::CACHE_NONE );
   }
 }

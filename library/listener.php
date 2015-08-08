@@ -48,10 +48,9 @@ class Listener implements FeasibleInterface {
    */
   protected function frameworkRequestStart() {
 
-    $this->request = new Request();
     try {
 
-      Helper::start( $this->request );
+      $this->request = Helper::start();
 
     } catch( \Exception $e ) {
       $this->exception = $e;
@@ -87,6 +86,6 @@ class Listener implements FeasibleInterface {
       $this->response->setStatus( $this->exception instanceof Exception\Runtime ? Response::STATUS_BAD : Response::STATUS_INTERNAL );
     }
 
-    Helper::stop( $this->request, $this->response );
+    Helper::stop( $this->response, $this->request );
   }
 }

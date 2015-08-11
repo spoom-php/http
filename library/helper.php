@@ -246,7 +246,30 @@ abstract class Helper {
 
     // FIXME  process file data
     $data[ RequestInput::NAMESPACE_FILE ] = [ ];
-    if( !empty( $_FILES ) ) ;
+    if( !empty( $_FILES ) ) {
+
+      function fileProcessor( &$container, &$value, $name ) {
+
+        if( !is_array( $value ) ) $container[ $name ] = $value;
+        else foreach( $value as $i => $v ) {
+
+          if( !isset( $container[ $i ] ) ) $container[ $i ] = [ ];
+          fileProcessor( $container[ $i ], $v, $name );
+        }
+      }
+
+      foreach( $_FILES as $index => $value ) {
+
+        if( !is_array( $value[ 'name' ] ) ) $data[ RequestInput::NAMESPACE_FILE ][ $index ] = $value;
+        else {
+
+          $data[ RequestInput::NAMESPACE_FILE ][ $index ] = [ ];
+          foreach( $value as $property => $container ) {
+            fileProcessor( $data[ RequestInput::NAMESPACE_FILE ][ $index ], $container, $property );
+          }
+        }
+      }
+    } 
 
     return $data;
   }

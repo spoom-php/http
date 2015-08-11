@@ -133,6 +133,8 @@ class Request extends Library {
       'data' => &$data
     ] );
 
+    // TODO implement body size limits
+
     if( !$event->isPrevented() && is_resource( $body ) ) {
 
       // choose processor based on the body format
@@ -158,7 +160,8 @@ class Request extends Library {
                 'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
                 'size'     => is_file( $uri ) ? filesize( $uri ) : null,
                 'tmp_name' => $uri,
-                'error'    => 0 // FIXME calculate limits and set this value
+                'error'    => 0, // FIXME calculate limits and set this value
+                'stream'   => $value->content
               ];
 
               $raw_file[] = [

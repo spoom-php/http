@@ -165,7 +165,7 @@ abstract class Helper {
       $extension->trigger( self::EVENT_STOP, [ 'response' => &$response ] );
 
       // log: debug
-      Framework\Request::getLog()->debug( 'Send response for the {method} {url} request', [
+      Framework\Request::getLog()->debug( $request ? 'Send response for the {method} {url} request' : 'Send response for an unknown request', [
         'method'  => $request ? strtoupper( $request->method ) : null,
         'url'     => $request ? (string) $request->url : null,
 
@@ -244,17 +244,24 @@ abstract class Helper {
     $data[ RequestInput::NAMESPACE_GET ]    = empty( $_GET ) ? [ ] : $_GET;
     $data[ RequestInput::NAMESPACE_POST ]   = empty( $_POST ) ? [ ] : $_POST;
 
-    // FIXME  process file data
+    // process file data
     $data[ RequestInput::NAMESPACE_FILE ] = [ ];
     if( !empty( $_FILES ) ) {
 
-      function fileProcessor( &$container, &$value, $name ) {
+      /**
+       * Recursive container filling helper (for the $_FILES processing)
+       *
+       * @param array  $container The container that will hold the value
+       * @param mixed  $value     The actual value
+       * @param string $name      The name of the property
+       */
+      function helper( &$container, &$value, $name ) {
 
         if( !is_array( $value ) ) $container[ $name ] = $value;
         else foreach( $value as $i => $v ) {
 
           if( !isset( $container[ $i ] ) ) $container[ $i ] = [ ];
-          fileProcessor( $container[ $i ], $v, $name );
+          helper( $container[ $i ], $v, $name );
         }
       }
 
@@ -265,7 +272,7 @@ abstract class Helper {
 
           $data[ RequestInput::NAMESPACE_FILE ][ $index ] = [ ];
           foreach( $value as $property => $container ) {
-            fileProcessor( $data[ RequestInput::NAMESPACE_FILE ][ $index ], $container, $property );
+            helper( $data[ RequestInput::NAMESPACE_FILE ][ $index ], $container, $property );
           }
         }
       }
@@ -275,6 +282,9 @@ abstract class Helper {
   }
 
   /**
+   *
+   * FIXME better specification support (http://www.w3.org/Protocols/rfc1341/7_2_Multipart.html) with more abstraction
+   * 
    * @param $input
    *
    * @return array

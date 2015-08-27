@@ -1,6 +1,7 @@
 <?php namespace Http;
 
 use Framework\Exception;
+use Framework\Extension;
 use Framework\Helper\Feasible;
 use Framework\Helper\FeasibleInterface;
 
@@ -13,6 +14,7 @@ class Listener implements FeasibleInterface {
     execute as executeFeasible;
   }
 
+  private $extension;
   /**
    * The request data object for the HTTP
    *
@@ -31,6 +33,14 @@ class Listener implements FeasibleInterface {
    * @var Exception
    */
   private $exception;
+
+  /**
+   * @inheritDoc
+   */
+  function __construct() {
+
+    $this->extension = Extension::instance( 'http' );
+  }
 
   /**
    * @inheritdoc
@@ -52,8 +62,17 @@ class Listener implements FeasibleInterface {
 
       $this->request = Helper::start();
 
+      // log: debug
+      $this->extension->log->debug( 'HTTP request is started for \'{method} {url}\' ({id})', [
+        'method' => strtoupper( $this->request->getMethod() ),
+        'url'    => (string) $this->request->url,
+        'id'     => $this->request->id,
+
+        'input'  => $this->request->input->getSource()
+      ] );
+
     } catch( \Exception $e ) {
-      $this->exception = $e;
+      $this->exception = Exception\Helper::wrap( $e )->log( [ ], $this->extension->log );
     }
   }
   /**
@@ -66,7 +85,7 @@ class Listener implements FeasibleInterface {
       $this->response = Helper::run( $this->request );
 
     } catch( \Exception $e ) {
-      $this->exception = $e;
+      $this->exception = Exception\Helper::wrap( $e )->log( [ ], $this->extension->log );
     }
   }
   /**
@@ -78,6 +97,10 @@ class Listener implements FeasibleInterface {
 
     // setup default response if needed
     if( !$this->response ) {
+
+      // log: info
+      $this->extension->log->info( 'HTTP response is not defined, blank response is used' );
+
       $this->response = new Response\Blank( $this->request );
     }
 

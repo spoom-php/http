@@ -78,19 +78,13 @@ abstract class Helper {
       self::$state = self::STATE_RUN;
 
       // collect request variables
-      $meta = self::getMeta();
-      $data = self::getData();
-      $body = fopen( 'php://input', 'r' );
-
-      // log: debug
-      Framework\Request::getLog()->debug( 'Start a new request', [
-        'data' => $data,
-        'meta' => $meta
-      ] );
+      $extension = Extension::instance( 'http' );
+      $meta      = self::getMeta();
+      $data      = self::getData();
+      $body      = fopen( 'php://input', 'r' );
 
       // trigger the start event
-      $extension = Extension::instance( 'http' );
-      $event     = $extension->trigger( self::EVENT_START, [ 'data' => &$data, 'meta' => &$meta, 'body' => &$body ] );
+      $event = $extension->trigger( self::EVENT_START, [ 'data' => &$data, 'meta' => &$meta, 'body' => &$body ] );
       if( $event->prevented || $event->collector->contains() ) {
 
         throw ( $event->collector->contains() ? $event->collector->get() : new Exception\Strict( self::EXCEPTION_FAIL_START ) );
@@ -98,7 +92,9 @@ abstract class Helper {
 
         // search for the request object in the results
         foreach( $event->result as $request ) {
-          if( $request instanceof Request ) return $request;
+          if( $request instanceof Request ) {
+            return $request;
+          }
         }
 
         // return a default request
@@ -164,18 +160,20 @@ abstract class Helper {
       $extension = Extension::instance( 'http' );
       $extension->trigger( self::EVENT_STOP, [ 'response' => &$response ] );
 
-      // log: debug
-      Framework\Request::getLog()->debug( $request ? 'Send response for the {method} {url} request' : 'Send response for an unknown request', [
-        'method'  => $request ? strtoupper( $request->method ) : null,
-        'url'     => $request ? (string) $request->url : null,
-
-        'status'  => $response->getStatus(),
-        'message' => $response->getMessage(),
-        'header'  => $response->getHeader()
-      ] );
-
       // send the response
       $response->send();
+
+      // log: debug
+      $tmp = $request ? 'the \'{method} {url}\' ({id})' : 'an unknown';
+      $extension->log->debug( "HTTP response for {$tmp} request is '{reason}' ({status})", [
+        'method' => $request ? strtoupper( $request->getMethod() ) : null,
+        'url'    => $request ? (string) $request->getUrl() : null,
+        'id'     => $request ? $request->getId() : null,
+
+        'status' => $response->getStatus(),
+        'reason' => $response->getMessage(),
+        'header' => $response->getHeader()
+      ] );
     }
   }
 
@@ -190,8 +188,8 @@ abstract class Helper {
 
     $extension = Extension::instance( 'http' );
     return in_array( PHP_SAPI, $extension->option( 'default:sapi!array', [ ] ) ) ||
-           ( isset( $_SERVER[ 'SERVER_PROTOCOL' ] ) && strpos( 'http', strtolower( $_SERVER[ 'SERVER_PROTOCOL' ] ) ) === 0 ) ||
-           isset( $_SERVER[ 'REQUEST_METHOD' ] );
+    ( isset( $_SERVER[ 'SERVER_PROTOCOL' ] ) && strpos( 'http', strtolower( $_SERVER[ 'SERVER_PROTOCOL' ] ) ) === 0 ) ||
+    isset( $_SERVER[ 'REQUEST_METHOD' ] );
   }
 
   /**
@@ -221,13 +219,13 @@ abstract class Helper {
     // normalize the meta input
     $meta = new Framework\Storage( [ 'raw' => $meta ] );
     $meta->set( 'url.scheme', $meta->getString( 'raw.request.scheme', $meta->getString( 'https', 'off' ) != 'off' ? 'https' : 'http' ) )
-         ->set( 'url.host', $meta->getString( 'raw.server.name', $meta->getString( 'raw.http.host', null ) ) )
-         ->set( 'url.port', $meta->getNumber( 'raw.server.port', $meta->getString( 'url.scheme' ) == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS ) )
-         ->set( 'url.route', $meta->getString( 'raw.request.uri' ) )
-         ->set( 'body.format', explode( ';', $meta->getString( 'raw.content.type' ) )[ 0 ] )
-         ->set( 'body.length', $meta->getNumber( 'raw.content.length' ) )
-         ->set( 'request.path', rtrim( dirname( $meta->getString( 'raw.script.name' ) ), '/' ) . '/' )
-         ->set( 'request.method', mb_strtolower( $meta->getString( 'raw.request.method', 'get' ) ) );
+      ->set( 'url.host', $meta->getString( 'raw.server.name', $meta->getString( 'raw.http.host', null ) ) )
+      ->set( 'url.port', $meta->getNumber( 'raw.server.port', $meta->getString( 'url.scheme' ) == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS ) )
+      ->set( 'url.route', $meta->getString( 'raw.request.uri' ) )
+      ->set( 'body.format', explode( ';', $meta->getString( 'raw.content.type' ) )[ 0 ] )
+      ->set( 'body.length', $meta->getNumber( 'raw.content.length' ) )
+      ->set( 'request.path', rtrim( dirname( $meta->getString( 'raw.script.name' ) ), '/' ) . '/' )
+      ->set( 'request.method', mb_strtolower( $meta->getString( 'raw.request.method', 'get' ) ) );
 
     return $meta;
   }
@@ -276,7 +274,7 @@ abstract class Helper {
           }
         }
       }
-    } 
+    }
 
     return $data;
   }
@@ -284,7 +282,7 @@ abstract class Helper {
   /**
    *
    * FIXME better specification support (http://www.w3.org/Protocols/rfc1341/7_2_Multipart.html) with more abstraction
-   * 
+   *
    * @param $input
    *
    * @return array

@@ -3,16 +3,18 @@
 use Framework\Extension;
 use Framework\Helper\Enumerable;
 use Framework\Helper\Library;
+use Framework\Helper\String;
 use Framework\Storage;
 
 /**
  * Class Request
  * @package Http
  *
+ * @property-read string       $id
  * @property-read Url          $url
  * @property-read Url          $url_base
  * @property-read RequestInput $input
- * @property-read string       method
+ * @property-read string       $method
  */
 class Request extends Library {
 
@@ -60,6 +62,13 @@ class Request extends Library {
    * Deletes the specified resource
    */
   const METHOD_DELETE = 'delete';
+
+  /**
+   * Unique string of the request mostly for logging purpose
+   *
+   * @var string
+   */
+  private $_id;
 
   /**
    * The request url representation
@@ -114,6 +123,9 @@ class Request extends Library {
     // define the web server base url
     $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
     $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:request.path' ) ), '/' ) . '/';
+
+    // generate unique request identifier
+    $this->_id = String::unique( 32, "{$this->_method} {$this->_url}", false, 'md5' );
   }
 
   /**
@@ -239,6 +251,12 @@ class Request extends Library {
     }
   }
 
+  /**
+   * @return string
+   */
+  public function getId() {
+    return $this->_id;
+  }
   /**
    * @return Url
    */

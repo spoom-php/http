@@ -105,9 +105,9 @@ class Url extends Library {
    */
   protected static $TEMPLATE = [
     self::COMPONENT_SCHEME   => '{scheme}:',
-    self::COMPONENT_PASSWORD => '{password}:',
-    self::COMPONENT_USER     => '{user}@',
-    self::COMPONENT_HOST     => '//{host}',
+    self::COMPONENT_USER     => '{user}:',
+    self::COMPONENT_PASSWORD => '{password}@',
+    self::COMPONENT_HOST     => '{host}',
     self::COMPONENT_PORT     => ':{port}',
     self::COMPONENT_PATH     => '{path}',
     self::COMPONENT_QUERY    => '?{query}',
@@ -228,9 +228,14 @@ class Url extends Library {
       }
     }
 
+    // preprocess the template based on the actual values
+    $template = static::$TEMPLATE;
+    if( !isset( $component[ self::COMPONENT_USER ] ) ) $template[ self::COMPONENT_HOST ] = '//' . $template[ self::COMPONENT_HOST ];
+    else $template[ self::COMPONENT_USER ] = '//' . $template[ self::COMPONENT_USER ];
+    
     // build the template string based on the exists components
     $string = '';
-    foreach( static::$TEMPLATE as $name => $pattern ) {
+    foreach( $template as $name => $pattern ) {
       if( isset( $component[ $name ] ) ) {
         $string .= $pattern;
       }

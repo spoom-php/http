@@ -81,7 +81,7 @@ abstract class Helper {
       $extension = Extension::instance( 'http' );
       $meta      = self::getMeta();
       $data      = self::getData();
-      $body      = fopen( 'php://input', 'r' );
+      $body      = self::getBody();
 
       // trigger the start event
       $event = $extension->trigger( self::EVENT_START, [ 'data' => &$data, 'meta' => &$meta, 'body' => &$body ] );
@@ -278,6 +278,14 @@ abstract class Helper {
 
     return $data;
   }
+  /**
+   * Get the request body stream
+   *
+   * @return resource
+   */
+  public static function getBody() {
+    return fopen( 'php://input', 'r' );
+  }
 
   /**
    *
@@ -303,7 +311,7 @@ abstract class Helper {
 
       $stop_size = strlen( $stop );
       $string    = false;
-      if( !$content ) {
+      if( $content === null ) {
         $string  = true;
         $content = fopen( 'php://memory', 'w+' );
       }
@@ -317,16 +325,16 @@ abstract class Helper {
 
           // remove the "safe" (doesn't include the stop string) string from the buffer into the content for optimalisation
           $safe = substr( $buffer, 0, -$stop_size );
-          fwrite( $content, $safe );
+          if( is_resource( $content ) ) fwrite( $content, $safe );
           $buffer = substr( $buffer, -$stop_size ) . $tmp;
         }
       }
 
       // remove the final "safe" (doesn't include the stop string) string from the buffer into the content
-      fwrite( $content, substr( $buffer, 0, $position ) );
+      if( is_resource( $content ) ) fwrite( $content, substr( $buffer, 0, $position ) );
       $buffer = substr( $buffer, $position + $stop_size );
 
-      rewind( $content );
+      if( is_resource( $content ) ) rewind( $content );
       return $string ? stream_get_contents( $content ) : $content;
     }
 
@@ -363,8 +371,8 @@ abstract class Helper {
       }
 
       // read the last "line" which will be the content. The files is readed to a temp file instead of the memory
-      if( isset( $headers[ 'content-disposition' ][ 'filename' ] ) ) $value = read( $input, $boundary, $buffer, tmpfile() );
-      else $value = rtrim( read( $input, $boundary, $buffer ), "\r" );
+      if( !isset( $headers[ 'content-disposition' ][ 'filename' ] ) ) $value = rtrim( read( $input, $boundary, $buffer ), "\r" );
+      else $value = read( $input, $boundary, $buffer, tmpfile() );
 
       // save the multipart data
       $multipart[] = (object) [

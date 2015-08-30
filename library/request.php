@@ -10,11 +10,11 @@ use Framework\Storage;
  * Class Request
  * @package Http
  *
- * @property-read string       $id
- * @property-read Url          $url
- * @property-read Url          $url_base
- * @property-read RequestInput $input
- * @property-read string       $method
+ * @property-read string       $id       The unique id of the request (random, 32 length)
+ * @property-read Url          $url      The url of the request
+ * @property-read Url          $url_base The url with the root path
+ * @property-read RequestInput $input    The input data with the servers' meta
+ * @property-read string       $method   The HTTP request method
  */
 class Request extends Library {
 
@@ -145,8 +145,6 @@ class Request extends Library {
       'data' => &$data
     ] );
 
-    // TODO implement body size limits
-
     if( !$event->isPrevented() && is_resource( $body ) ) {
 
       // choose processor based on the body format
@@ -165,16 +163,27 @@ class Request extends Library {
           foreach( $multipart as $value ) {
             if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
 
-              $stream = stream_get_meta_data( $value->content );
-              $uri    = $stream[ 'uri' ];
               $tmp    = [
                 'name'     => $value->meta[ 'content-disposition' ][ 'filename' ],
                 'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
-                'size'     => is_file( $uri ) ? filesize( $uri ) : null,
-                'tmp_name' => $uri,
-                'error'    => 0, // FIXME calculate limits and set this value
-                'stream'   => $value->content
+                'size'     => null,
+                'tmp_name' => null,
+                'error'    => 0,
+                'stream'   => null
               ];
+
+              // setup content related values 
+              if( is_resource( $value->content ) ) {
+                
+                $tmp[ 'stream' ]   = $value->content;
+                $tmp[ 'tmp_name' ] = stream_get_meta_data( $tmp[ 'stream' ] )[ 'uri' ];
+                $tmp[ 'size' ]     = $tmp[ 'tmp_name' ] && is_file( $tmp[ 'tmp_name' ] ) ? filesize( $tmp[ 'tmp_name' ] ) : 0;
+              }
+
+              // calculate file errors
+              if( empty( $tmp[ 'tmp_name' ] ) ) $tmp[ 'error' ] = UPLOAD_ERR_CANT_WRITE;
+              else if( empty( $tmp[ 'size' ] ) ) $tmp[ 'error' ] = UPLOAD_ERR_NO_FILE;
+              else ; // FIXME maybe check the file size for overflow
 
               $raw_file[] = [
                 'name'  => $value->meta[ 'content-disposition' ][ 'name' ],

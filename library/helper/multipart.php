@@ -5,6 +5,8 @@ use Framework\Helper\Library;
 /**
  * Class Multipart
  * @package Http\Helper
+ *
+ * @property-read MultipartData[] $data
  */
 class Multipart extends Library {
 
@@ -131,7 +133,7 @@ class Multipart extends Library {
     if( is_resource( $content ) ) rewind( $content );
     return $string ? stream_get_contents( $content ) : $content;
   }
-  
+
   /**
    * @return MultipartData[]
    */
@@ -142,6 +144,9 @@ class Multipart extends Library {
 /**
  * Class MultipartData
  * @package Http\Helper
+ *
+ * @property-read array           $meta
+ * @property-read string|resource $content
  */
 class MultipartData extends Library {
 

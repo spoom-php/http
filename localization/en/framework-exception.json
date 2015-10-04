@@ -16,5 +16,7 @@
   "#13W": "Invalid port number: {port}",
   "#14W": "Cannot parse the url into components",
   "#15W": "Cannot create url string from the stored components",
-  "#16N": "Cannot set the empty response body" 
+  "#16N": "Cannot set the empty response body",
+
+  "#17W": "Multipart request data has an invalid format (no end)"
 }

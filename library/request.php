@@ -1,10 +1,12 @@
 <?php namespace Http;
 
+use Framework\Exception;
 use Framework\Extension;
 use Framework\Helper\Enumerable;
 use Framework\Helper\Library;
 use Framework\Helper\String;
 use Framework\Storage;
+use Http\Helper\Multipart;
 
 /**
  * Class Request
@@ -145,7 +147,7 @@ class Request extends Library {
       'data' => &$data
     ] );
 
-    if( !$event->isPrevented() && is_resource( $body ) ) {
+    if( !$event->isPrevented() && is_resource( $body ) ) try {
 
       // choose processor based on the body format
       $format = $meta->getString( 'body.format' );
@@ -155,28 +157,27 @@ class Request extends Library {
         case 'multipart/form-data':
 
           // temporary data storages
-          $raw_post = [ ];
-          $raw_file = [ ];
+          $raw_post = $raw_file = [ ];
 
+          // TODO extract and use the boundary from the content-type
+          
           // process the multipart data into the raw containers (to process the array names later)
-          $multipart = Helper::fromMultipart( $body );
-          foreach( $multipart as $value ) {
+          $multipart = new Multipart( $body );
+          foreach( $multipart->data as $value ) {
             if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
 
-              $tmp    = [
+              $tmp = [
                 'name'     => $value->meta[ 'content-disposition' ][ 'filename' ],
                 'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
                 'size'     => null,
                 'tmp_name' => null,
-                'error'    => 0,
-                'stream'   => null
+                'error'    => UPLOAD_ERR_OK
               ];
 
               // setup content related values 
               if( is_resource( $value->content ) ) {
-                
-                $tmp[ 'stream' ]   = $value->content;
-                $tmp[ 'tmp_name' ] = stream_get_meta_data( $tmp[ 'stream' ] )[ 'uri' ];
+
+                $tmp[ 'tmp_name' ] = stream_get_meta_data( $value->content )[ 'uri' ];
                 $tmp[ 'size' ]     = $tmp[ 'tmp_name' ] && is_file( $tmp[ 'tmp_name' ] ) ? filesize( $tmp[ 'tmp_name' ] ) : 0;
               }
 
@@ -257,6 +258,11 @@ class Request extends Library {
 
           break;
       }
+
+    } catch( \Exception $e ) {
+
+      // log any input parse exception
+      Exception\Helper::wrap( $e )->log();
     }
   }
 

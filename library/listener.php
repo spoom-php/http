@@ -106,6 +106,10 @@ class Listener implements FeasibleInterface {
 
     // setup default http status if needed
     if( $this->exception && !$this->response->getStatus() ) {
+
+      // log: info
+      $this->extension->log->info( 'HTTP has an exception but the response status is empty, status will defined automatically' );
+      
       $this->response->setStatus( $this->exception instanceof Exception\Runtime ? Response::STATUS_BAD : Response::STATUS_INTERNAL );
     }
 

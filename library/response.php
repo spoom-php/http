@@ -216,7 +216,7 @@ abstract class Response extends Library implements ResponseInterface {
   /**
    * The HTTP request object
    *
-   * @var Request
+   * @var Request|null
    */
   protected $request;
   /**
@@ -253,10 +253,10 @@ abstract class Response extends Library implements ResponseInterface {
   protected $_header;
 
   /**
-   * @param Request  $request The HTTP request representation
-   * @param resource $stream  The output stream. Default is the 'php://output'
+   * @param Request|null $request The HTTP request representation
+   * @param resource     $stream  The output stream. Default is the 'php://output'
    */
-  function __construct( Request $request, $stream = null ) {
+  function __construct( Request $request = null, $stream = null ) {
 
     $this->_header = new Storage();
     $this->request = $request;
@@ -290,7 +290,8 @@ abstract class Response extends Library implements ResponseInterface {
 
         // reset headers and set the status line
         header_remove();
-        header( $this->request->input->getString( 'meta:server.protocol', 'HTTP/1.1' ) . " {$this->_status} {$this->_message}", true, $this->_status );
+        $http_version = $this->request ? $this->request->input->getString( 'meta:server.protocol', 'HTTP/1.1' ) : 'HTTP/1.1';
+        header( $http_version . " {$this->_status} {$this->_message}", true, $this->_status );
 
         // add every other header definition
         $header = $this->_header->getArray( '' );

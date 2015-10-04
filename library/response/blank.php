@@ -20,7 +20,9 @@ class Blank extends Response {
   public function send() {
 
     // add no content flag
-    $this->_status = Response::STATUS_CONTENT_NO;
+    if( empty( $this->_status ) ) {
+      $this->_status = Response::STATUS_CONTENT_NO;
+    }
 
     parent::send();
   }

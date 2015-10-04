@@ -66,7 +66,7 @@ abstract class Helper {
    * Handle the HTTP request start. It can be called only once
    *
    * @return Request
-   * @throws Exception
+   * @throws \Exception
    */
   public static function start() {
 
@@ -150,7 +150,7 @@ abstract class Helper {
   public static function stop( ResponseInterface $response, Request $request = null ) {
 
     // prevent multiple runs
-    if( self::$state != self::STATE_STOP ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
+    if( self::$state == self::STATE_START ) throw new Exception\Strict( self::EXCEPTION_INVALID_STATE, [ 'state' => self::$state ] );
     else {
 
       // set the new state value

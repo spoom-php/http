@@ -12,6 +12,11 @@ use Framework\Helper\Library;
 class Multipart extends Library {
 
   /**
+   * @var resource[]
+   */
+  private static $resource = [ ];
+
+  /**
    * Invalid end of the multipart input
    */
   const EXCEPTION_MISSING_END = 'http#17W';
@@ -83,7 +88,7 @@ class Multipart extends Library {
         $tmp = $this->read( self::SEPARATOR_LINE, $buffer );
         if( $tmp == '' ) break;
 
-        $this->header( $input, $headers );
+        $this->header( $tmp, $headers );
       }
 
       // read the last "line" which will be the content. The files is readed to a temp file instead of the memory

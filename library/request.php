@@ -159,6 +159,8 @@ class Request extends Library {
           // temporary data storages
           $raw_post = $raw_file = [ ];
 
+          // TODO extract and use the boundary from the content-type
+          
           // process the multipart data into the raw containers (to process the array names later)
           $multipart = new Multipart( $body );
           foreach( $multipart->data as $value ) {
@@ -169,7 +171,7 @@ class Request extends Library {
                 'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
                 'size'     => null,
                 'tmp_name' => null,
-                'error'    => 0
+                'error'    => UPLOAD_ERR_OK
               ];
 
               // setup content related values 
@@ -256,6 +258,7 @@ class Request extends Library {
 
           break;
       }
+
     } catch( \Exception $e ) {
 
       // log any input parse exception

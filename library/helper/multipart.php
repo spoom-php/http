@@ -1,5 +1,6 @@
 <?php namespace Http\Helper;
 
+use Framework\Exception;
 use Framework\Helper\Library;
 
 /**
@@ -10,17 +11,47 @@ use Framework\Helper\Library;
  */
 class Multipart extends Library {
 
-  const SEPARATOR_LINE         = "\n\r";
+  /**
+   * Invalid end of the multipart input
+   */
+  const EXCEPTION_MISSING_END = 'http#17W';
+
+  /**
+   * Line separator
+   */
+  const SEPARATOR_LINE = "\r\n";
+  /**
+   * Multipart start and end "flag"
+   */
   const SEPARATOR_END          = "--";
+  /**
+   * Header content and name separator
+   */
   const SEPARATOR_HEAD_CONTENT = ":";
+  /**
+   * Header content data separator
+   */
   const SEPARATOR_HEAD_DATA    = ";";
+  /**
+   * Header content data name and value separator
+   */
   const SEPARATOR_HEAD_VALUE   = "=";
 
-  const BUFFER = 4096;
+  /**
+   * The input reading chunk length
+   */
+  const CHUNK = 4096;
 
+  /**
+   * The input stream
+   *
+   * @var resource
+   */
   private $stream;
 
   /**
+   * The parsed data
+   *
    * @var MultipartData[]
    */
   private $_data;
@@ -30,6 +61,8 @@ class Multipart extends Library {
    * FIXME better specification support (http://www.w3.org/Protocols/rfc1341/7_2_Multipart.html) with more abstraction
    *
    * @param $input
+   *
+   * @throws Exception
    */
   public function __construct( $input ) {
 
@@ -67,6 +100,11 @@ class Multipart extends Library {
       // check the multipart data' end
       $last = $this->read( self::SEPARATOR_LINE, $buffer );
       if( $last == self::SEPARATOR_END ) break;
+
+      // check for invalid multipart message
+      if( $buffer == '' && feof( $this->stream ) ) {
+        throw new Exception\System( self::EXCEPTION_MISSING_END );
+      }
     }
   }
 
@@ -115,7 +153,7 @@ class Multipart extends Library {
     // read until the stop string
     while( ( $position = strpos( $buffer, $stop ) ) === false ) {
 
-      $tmp = fread( $this->stream, $stop_size > self::BUFFER ? $stop_size : self::BUFFER );
+      $tmp = fread( $this->stream, $stop_size > self::CHUNK ? $stop_size : self::CHUNK );
       if( !$tmp ) break;
       else {
 

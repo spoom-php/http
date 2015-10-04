@@ -1,5 +1,6 @@
 <?php namespace Http;
 
+use Framework\Exception;
 use Framework\Extension;
 use Framework\Helper\Enumerable;
 use Framework\Helper\Library;
@@ -146,7 +147,7 @@ class Request extends Library {
       'data' => &$data
     ] );
 
-    if( !$event->isPrevented() && is_resource( $body ) ) {
+    if( !$event->isPrevented() && is_resource( $body ) ) try {
 
       // choose processor based on the body format
       $format = $meta->getString( 'body.format' );
@@ -156,15 +157,14 @@ class Request extends Library {
         case 'multipart/form-data':
 
           // temporary data storages
-          $raw_post = [ ];
-          $raw_file = [ ];
+          $raw_post = $raw_file = [ ];
 
           // process the multipart data into the raw containers (to process the array names later)
           $multipart = new Multipart( $body );
           foreach( $multipart->data as $value ) {
             if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
 
-              $tmp    = [
+              $tmp = [
                 'name'     => $value->meta[ 'content-disposition' ][ 'filename' ],
                 'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
                 'size'     => null,
@@ -256,6 +256,10 @@ class Request extends Library {
 
           break;
       }
+    } catch( \Exception $e ) {
+
+      // log any input parse exception
+      Exception\Helper::wrap( $e )->log();
     }
   }
 

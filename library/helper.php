@@ -3,6 +3,7 @@
 use Framework;
 use Framework\Exception;
 use Framework\Extension;
+use Http\Helper\UriInterface;
 
 /**
  * Class Helper
@@ -219,13 +220,13 @@ abstract class Helper {
     // normalize the meta input
     $meta = new Framework\Storage( [ 'raw' => $meta ] );
     $meta->set( 'url.scheme', $meta->getString( 'raw.request.scheme', $meta->getString( 'https', 'off' ) != 'off' ? 'https' : 'http' ) )
-      ->set( 'url.host', $meta->getString( 'raw.server.name', $meta->getString( 'raw.http.host', null ) ) )
-      ->set( 'url.port', $meta->getNumber( 'raw.server.port', $meta->getString( 'url.scheme' ) == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS ) )
-      ->set( 'url.route', $meta->getString( 'raw.request.uri' ) )
-      ->set( 'body.format', explode( ';', $meta->getString( 'raw.content.type' ) )[ 0 ] )
-      ->set( 'body.length', $meta->getNumber( 'raw.content.length' ) )
-      ->set( 'request.path', rtrim( dirname( $meta->getString( 'raw.script.name' ) ), '/' ) . '/' )
-      ->set( 'request.method', mb_strtolower( $meta->getString( 'raw.request.method', 'get' ) ) );
+         ->set( 'url.host', $meta->getString( 'raw.server.name', $meta->getString( 'raw.http.host', null ) ) )
+         ->set( 'url.port', $meta->getNumber( 'raw.server.port', $meta->getString( 'url.scheme' ) == 'http' ? UriInterface::PORT_HTTP : UriInterface::PORT_HTTPS ) )
+         ->set( 'url.route', $meta->getString( 'raw.request.uri' ) )
+         ->set( 'body.format', explode( ';', $meta->getString( 'raw.content.type' ) )[ 0 ] )
+         ->set( 'body.length', $meta->getNumber( 'raw.content.length' ) )
+         ->set( 'request.path', rtrim( dirname( $meta->getString( 'raw.script.name' ) ), '/' ) . '/' )
+         ->set( 'request.method', mb_strtolower( $meta->getString( 'raw.request.method', 'get' ) ) );
 
     return $meta;
   }

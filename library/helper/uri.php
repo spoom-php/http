@@ -1,4 +1,4 @@
-<?php namespace Http;
+<?php namespace Http\Helper;
 
 use Framework\Exception;
 use Framework\Extension;
@@ -6,46 +6,19 @@ use Framework\Helper\Library;
 use Framework\Helper\String;
 
 /**
- * Class Url
- * @package Http
+ * Interface UriInterface
  *
- * @property      string $scheme    The scheme. If defined, the host MUST be defined too
- * @property      string $password  The password. If defined, the user MUST be defined too
- * @property      string $user      The user. If defined, the host MUST be defined too
- * @property      string $host      The host without the port
- * @property      int    $port      The port
- * @property      string $path      The path. This can be relative or absolute too
- * @property      array  $query     The query in the array form. This is never null
- * @property      string $fragment  The fragment
- * @property-read array  $component All the components above (only that is defined) in an associative array
+ * @see     http://tools.ietf.org/html/rfc3986
+ * @package Http
  */
-class Url extends Library {
+interface UriInterface {
 
-  /**
-   * The query argument can't parsed into an array
-   */
-  const EXCEPTION_INVALID_QUERY = 'http#12W';
-  /**
-   * The port is not a number. Argument:
-   *  - port [mixed]: The port that is invalid
-   */
-  const EXCEPTION_INVALID_PORT = 'http#13W';
-  /**
-   * The URI definition can't be parsed into an Url instance
-   */
-  const EXCEPTION_INVALID_DEFINITION = 'http#14W';
-  /**
-   * The Url can't converted into a string. Arguments:
-   *  - component [array]: The URI component array that is invalid
-   */
-  const EXCEPTION_INVALID_URI = 'http#15W';
-
-  /**
-   * Triggers before the url building. Arguments:
-   *  - instance [Url]: The Url instance
-   *  - &component [array]: The URL's component array
-   */
-  const EVENT_BUILD = 'url.build';
+  const SEPARATOR_SCHEME   = ':';
+  const SEPARATOR_HOST     = '//';
+  const SEPARATOR_USER     = '@';
+  const SEPARATOR_PASSWORD = ':';
+  const SEPARATOR_QUERY    = '?';
+  const SEPARATOR_FRAGMENT = '#';
 
   /**
    * The scheme part name
@@ -90,7 +63,146 @@ class Url extends Library {
   const PORT_HTTPS = 443;
 
   /**
+   * @return string Format: [scheme:][//[user[:password]@]host[:port]][/path][?query][#fragment]
+   */
+  public function __toString();
+
+  /**
+   * @return string|null
+   */
+  public function getScheme();
+  /**
+   * @param string|null $value
+   *
+   * @return static
+   */
+  public function setScheme( $value );
+
+  /**
+   * @return string|null
+   */
+  public function getUser();
+  /**
+   * @return string|null
+   */
+  public function getPassword();
+  /**
+   * note: The raw password definition is deprecated (@see http://tools.ietf.org/html/rfc3986#section-3.2.1)
+   *
+   * @param string|null $value
+   * @param string|null $password
+   *
+   * @return static
+   */
+  public function setUser( $value, $password = null );
+  /**
+   * @return string|null
+   */
+  public function getHost();
+  /**
+   * @param string|null $value
+   *
+   * @return static
+   */
+  public function setHost( $value );
+  /**
+   * @return int|null
+   */
+  public function getPort();
+  /**
+   * @param int|null $value
+   *
+   * @return static
+   * @throws Exception
+   */
+  public function setPort( $value );
+
+  /**
+   * @return string|null
+   */
+  public function getPath();
+  /**
+   * @param string|null $value
+   *
+   * @return static
+   */
+  public function setPath( $value );
+
+  /**
+   * @return array[]|null
+   */
+  public function getQuery();
+  /**
+   * @param array|string $value
+   *
+   * @return static
+   * @throws Exception
+   */
+  public function setQuery( $value );
+
+  /**
+   * @return string|null
+   */
+  public function getFragment();
+  /**
+   * @param string|null $value
+   *
+   * @return static
+   */
+  public function setFragment( $value );
+
+  /**
+   * @return array
+   */
+  public function getComponent();
+}
+
+/**
+ * Class Uri
+ * @package Http
+ *
+ * @property      string $scheme    The scheme. If defined, the host MUST be defined too
+ * @property      string $password  The password. If defined, the user MUST be defined too
+ * @property      string $user      The user. If defined, the host MUST be defined too
+ * @property      string $host      The host without the port
+ * @property      int    $port      The port
+ * @property      string $path      The path. This can be relative or absolute too
+ * @property      array  $query     The query in the array form. This is never null
+ * @property      string $fragment  The fragment
+ * @property-read array  $component All the components above (only that is defined) in an associative array
+ */
+class Uri extends Library implements UriInterface {
+
+  /**
+   * The query argument can't parsed into an array
+   */
+  const EXCEPTION_INVALID_QUERY = 'http#12W';
+  /**
+   * The port is not a number. Argument:
+   *  - port [mixed]: The port that is invalid
+   */
+  const EXCEPTION_INVALID_PORT = 'http#13W';
+  /**
+   * The URI definition can't be parsed into an Uri instance
+   */
+  const EXCEPTION_INVALID_DEFINITION = 'http#14W';
+  /**
+   * The Uri can't converted into a string. Arguments:
+   *  - component [array]: The URI component array that is invalid
+   */
+  const EXCEPTION_INVALID_URI = 'http#15W';
+
+  /**
+   * Triggers before the url building. Arguments:
+   *  - instance [Uri]: The Uri instance
+   *  - &component [array]: The URL's component array
+   */
+  const EVENT_BUILD = 'url.build';
+
+  /**
    * Map schemes to their default ports. This port will omitted in the URL string if the URL has the scheme's default port
+   *
+   * TODO define the rest known default port
    *
    * @var int[string]
    */
@@ -100,6 +212,8 @@ class Url extends Library {
   ];
   /**
    * Helper array that map the components to their string pattern in the URL string
+   *
+   * FIXME add characters from the self::SEPARATOR_* constants
    *
    * @var array[string]string
    */
@@ -140,7 +254,7 @@ class Url extends Library {
   /**
    * @param string|array          $query The query array or string that will parsed into array
    * @param string|null           $path  The path of the URL
-   * @param Url|string|array|null $root  The root URL definition. The new instance will be extended with this URL
+   * @param Uri|string|array|null $root  The root URL definition. The new instance will be extended with this URL
    */
   public function __construct( $query = [ ], $path = null, $root = null ) {
 
@@ -199,9 +313,8 @@ class Url extends Library {
           }
 
           break;
-        // check the host if user or scheme is defined
+        // check the host if user is defined
         case self::COMPONENT_USER:
-        case self::COMPONENT_SCHEME:
 
           // cannot build an URL with scheme or user and no host
           if( !isset( $component[ self::COMPONENT_HOST ] ) ) {
@@ -230,9 +343,17 @@ class Url extends Library {
 
     // preprocess the template based on the actual values
     $template = static::$TEMPLATE;
-    if( !isset( $component[ self::COMPONENT_USER ] ) ) $template[ self::COMPONENT_HOST ] = '//' . $template[ self::COMPONENT_HOST ];
-    else $template[ self::COMPONENT_USER ] = '//' . $template[ self::COMPONENT_USER ];
-    
+
+    // add double slash before the host (or the user)
+    if( !isset( $component[ self::COMPONENT_USER ] ) ) $template[ self::COMPONENT_HOST ] = self::SEPARATOR_HOST . $template[ self::COMPONENT_HOST ];
+    else $template[ self::COMPONENT_USER ] = self::SEPARATOR_HOST . $template[ self::COMPONENT_USER ];
+
+    // unset the password part
+    if( !isset( $component[ self::COMPONENT_PASSWORD ] ) ) {
+      $component[ self::COMPONENT_PASSWORD ] = '';
+      $template[ self::COMPONENT_USER ]      = rtrim( $template[ self::COMPONENT_USER ], self::SEPARATOR_PASSWORD );
+    }
+
     // build the template string based on the exists components
     $string = '';
     foreach( $template as $name => $pattern ) {
@@ -246,7 +367,7 @@ class Url extends Library {
   /**
    * Extend the components with the ones in the $uri argument
    *
-   * @param Url|array|string $uri       The URL definition
+   * @param Uri|array|string $uri       The URL definition
    * @param array            $overwrite The component names that will be overwritten not just extended
    *
    * @example  'http/index.php' extended with the 'http://example.com/url' will be http://example.com/url/http/index.php
@@ -290,10 +411,21 @@ class Url extends Library {
   }
   /**
    * @param string|null $value
+   *
+   * @return static
    */
   public function setScheme( $value ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_SCHEME ] );
     else $this->_component[ self::COMPONENT_SCHEME ] = (string) $value;
+
+    return $this;
+  }
+
+  /**
+   * @return string|null
+   */
+  public function getUser() {
+    return isset( $this->_component[ self::COMPONENT_USER ] ) ? $this->_component[ self::COMPONENT_USER ] : null;
   }
   /**
    * @return string|null
@@ -303,23 +435,18 @@ class Url extends Library {
   }
   /**
    * @param string|null $value
+   * @param string|null $password
+   *
+   * @return static
    */
-  public function setPassword( $value ) {
-    if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PASSWORD ] );
-    else $this->_component[ self::COMPONENT_PASSWORD ] = (string) $value;
-  }
-  /**
-   * @return string|null
-   */
-  public function getUser() {
-    return isset( $this->_component[ self::COMPONENT_USER ] ) ? $this->_component[ self::COMPONENT_USER ] : null;
-  }
-  /**
-   * @param string|null $value
-   */
-  public function setUser( $value ) {
+  public function setUser( $value, $password = null ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_USER ] );
     else $this->_component[ self::COMPONENT_USER ] = (string) $value;
+
+    if( is_null( $password ) ) unset( $this->_component[ self::COMPONENT_PASSWORD ] );
+    else $this->_component[ self::COMPONENT_PASSWORD ] = (string) $password;
+
+    return $this;
   }
   /**
    * @return string|null
@@ -329,10 +456,14 @@ class Url extends Library {
   }
   /**
    * @param string|null $value
+   *
+   * @return static
    */
   public function setHost( $value ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_HOST ] );
     else $this->_component[ self::COMPONENT_HOST ] = (string) $value;
+
+    return $this;
   }
   /**
    * @return int|null
@@ -343,13 +474,17 @@ class Url extends Library {
   /**
    * @param int|null $value
    *
+   * @return static
    * @throws Exception
    */
   public function setPort( $value ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PORT ] );
     else if( !is_numeric( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_PORT, [ 'port' => $value ] );
     else $this->_component[ self::COMPONENT_PORT ] = (int) $value;
+
+    return $this;
   }
+
   /**
    * @return string|null
    */
@@ -358,11 +493,16 @@ class Url extends Library {
   }
   /**
    * @param string|null $value
+   *
+   * @return static
    */
   public function setPath( $value ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PATH ] );
     else $this->_component[ self::COMPONENT_PATH ] = $value;
+
+    return $this;
   }
+
   /**
    * @return array[]|null
    */
@@ -372,6 +512,7 @@ class Url extends Library {
   /**
    * @param array|string $value
    *
+   * @return static
    * @throws Exception
    */
   public function setQuery( $value ) {
@@ -384,7 +525,10 @@ class Url extends Library {
       $this->_component[ self::COMPONENT_QUERY ] = [ ];
       parse_str( $value, $this->_component[ self::COMPONENT_QUERY ] );
     }
+
+    return $this;
   }
+
   /**
    * @return string|null
    */
@@ -393,11 +537,16 @@ class Url extends Library {
   }
   /**
    * @param string|null $value
+   *
+   * @return static
    */
   public function setFragment( $value ) {
-    if( is_null( $value ) || trim( $value, ' #' ) == '' ) unset( $this->_component[ self::COMPONENT_FRAGMENT ] );
-    else $this->_component[ self::COMPONENT_FRAGMENT ] = ltrim( $value, '#' );
+    if( is_null( $value ) || trim( $value, ' ' . self::SEPARATOR_FRAGMENT ) == '' ) unset( $this->_component[ self::COMPONENT_FRAGMENT ] );
+    else $this->_component[ self::COMPONENT_FRAGMENT ] = ltrim( $value, self::SEPARATOR_FRAGMENT );
+
+    return $this;
   }
+
   /**
    * @return array
    */
@@ -406,16 +555,16 @@ class Url extends Library {
   }
 
   /**
-   * Process the definition into an Url instance
+   * Process the definition into an Uri instance
    *
-   * @param Url|array|string $definition The string representation of an URL, or an array of URL components
+   * @param Uri|array|string $definition The string representation of an URL, or an array of URL components
    *
-   * @return Url
+   * @return Uri
    * @throws Exception\Strict
    */
   public static function instance( $definition ) {
 
-    if( $definition instanceof Url ) return $definition;
+    if( $definition instanceof UriInterface ) return $definition;
     else if( is_array( $definition ) ) $components = $definition;
     else {
 
@@ -424,7 +573,7 @@ class Url extends Library {
     }
 
     // setup the basic variables
-    $uri       = new Url();
+    $uri       = new static();
     $translate = [
       'scheme'   => self::COMPONENT_SCHEME,
       'pass'     => self::COMPONENT_PASSWORD,
@@ -437,7 +586,7 @@ class Url extends Library {
       'fragment' => self::COMPONENT_FRAGMENT
     ];
 
-    // set components in the new Url instance
+    // set components in the new Uri instance
     foreach( $components as $name => $value ) {
       $uri->{$translate[ $name ]} = $value;
     }

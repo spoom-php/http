@@ -7,14 +7,15 @@ use Framework\Helper\Library;
 use Framework\Helper\String;
 use Framework\Storage;
 use Http\Helper\Multipart;
+use Http\Helper\Uri;
 
 /**
  * Class Request
  * @package Http
  *
  * @property-read string       $id       The unique id of the request (random, 32 length)
- * @property-read Url          $url      The url of the request
- * @property-read Url          $url_base The url with the root path
+ * @property-read Uri          $url      The url of the request
+ * @property-read Uri          $url_base The url with the root path
  * @property-read RequestInput $input    The input data with the servers' meta
  * @property-read string       $method   The HTTP request method
  */
@@ -75,13 +76,13 @@ class Request extends Library {
   /**
    * The request url representation
    *
-   * @var Url
+   * @var Uri
    */
   protected $_url;
   /**
    * The site url base (the url that is point to the site root directory)
    *
-   * @var Url
+   * @var Uri
    */
   protected $_url_base;
 
@@ -119,11 +120,11 @@ class Request extends Library {
     // define the current url object
     $scheme     = $this->_input->getString( 'meta:url.scheme', 'http' );
     $host       = $this->_input->getString( 'meta:url.host', null );
-    $port       = $this->_input->getNumber( 'meta:url.port', $scheme == 'http' ? Url::PORT_HTTP : Url::PORT_HTTPS );
-    $this->_url = Url::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:url.route' ) );
+    $port       = $this->_input->getNumber( 'meta:url.port', $scheme == 'http' ? Uri::PORT_HTTP : Uri::PORT_HTTPS );
+    $this->_url = Uri::instance( "{$scheme}://{$host}:{$port}" . $this->_input->getString( 'meta:url.route' ) );
 
     // define the web server base url
-    $this->_url_base       = new Url( [ ], null, $this->_url->build( [ Url::COMPONENT_SCHEME, Url::COMPONENT_HOST, Url::COMPONENT_PORT ] ) );
+    $this->_url_base       = new Uri( [ ], null, $this->_url->build( [ Uri::COMPONENT_SCHEME, Uri::COMPONENT_HOST, Uri::COMPONENT_PORT ] ) );
     $this->_url_base->path = rtrim( dirname( $this->_input->getString( 'meta:request.path' ) ), '/' ) . '/';
 
     // generate unique request identifier
@@ -160,7 +161,7 @@ class Request extends Library {
           $raw_post = $raw_file = [ ];
 
           // TODO extract and use the boundary from the content-type
-          
+
           // process the multipart data into the raw containers (to process the array names later)
           $multipart = new Multipart( $body );
           foreach( $multipart->data as $value ) {
@@ -273,13 +274,13 @@ class Request extends Library {
     return $this->_id;
   }
   /**
-   * @return Url
+   * @return Uri
    */
   public function getUrl() {
     return $this->_url;
   }
   /**
-   * @return Url
+   * @return Uri
    */
   public function getUrlBase() {
     return $this->_url_base;

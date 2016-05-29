@@ -2,7 +2,7 @@
 
 use Framework\Exception;
 use Http\Response;
-use Http\Url;
+use Http\Helper\Uri;
 
 /**
  * Class Redirect
@@ -18,7 +18,7 @@ class Redirect extends Buffer {
   /**
    * The URL to redirect on send
    *
-   * @var string|Url
+   * @var string|Uri
    */
   protected $_url;
 
@@ -45,15 +45,15 @@ class Redirect extends Buffer {
   }
 
   /**
-   * @return Url|string
+   * @return Uri|string
    */
   public function getUrl() {
     return $this->_url;
   }
   /**
-   * @param Url|string $value
+   * @param Uri|string $value
    */
   public function setUrl( $value ) {
-    $this->_url = $value !== null ? Url::instance( $value ) : null;
+    $this->_url = $value !== null ? Uri::instance( $value ) : null;
   }
 }

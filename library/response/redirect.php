@@ -3,12 +3,13 @@
 use Framework\Exception;
 use Http\Response;
 use Http\Helper\Uri;
+use Http\Message;
 
 /**
  * Class Redirect
  * @package Http\Response
  */
-class Redirect extends Buffer {
+class Redirect extends Message\Response {
 
   /**
    * The URL is not valid
@@ -23,25 +24,12 @@ class Redirect extends Buffer {
   protected $_url;
 
   /**
-   * @inheritdoc
+   * @inheritDoc
    */
-  public function send() {
+  public function __construct() {
 
-    if( !$this->_sent ) {
-
-      if( !$this->_url ) throw new Exception\Strict( self::EXCEPTION_INVALID_URL );
-      else {
-
-        // setup the redirect location
-        $this->_header->set( 'location', (string) $this->_url );
-
-        // setup the default 'See Other' status code if there is no other
-        if( empty( $this->_status ) ) $this->_status = static::STATUS_OTHER;
-
-        // send the response like normal
-        parent::send();
-      }
-    }
+    // set basic See Other header (303)
+    $this->setStatus( static::STATUS_OTHER );
   }
 
   /**
@@ -54,6 +42,8 @@ class Redirect extends Buffer {
    * @param Uri|string $value
    */
   public function setUrl( $value ) {
+
     $this->_url = $value !== null ? Uri::instance( $value ) : null;
+    $this->setHeader( $this->_url, 'location' );
   }
 }

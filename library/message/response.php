@@ -1,5 +1,7 @@
 <?php namespace Http\Message;
 
+use Http\Helper\StreamInterface;
+use Http\Message;
 use Http\MessageInterface;
 
 /**
@@ -119,13 +121,15 @@ interface ResponseInterface extends MessageInterface {
   const STATUS_UNAVAILABLE = 503;
 
   /**
+   * @param bool $default Return the default reason for the status if the stored is empty
+   *
    * @return string
    */
-  public function getMessage();
+  public function getReason( $default = false );
   /**
    * @param string $value
    */
-  public function setMessage( $value );
+  public function setReason( $value );
 
   /**
    * @return int
@@ -135,4 +139,96 @@ interface ResponseInterface extends MessageInterface {
    * @param int $value
    */
   public function setStatus( $value );
+}
+
+class Response extends Message implements ResponseInterface {
+
+  /**
+   * The status codes default reason phrases
+   *
+   * TODO change this to const after PHP7
+   *
+   * @var string[]
+   */
+  protected static $REASON = [
+    self::STATUS_OK              => 'OK',
+    self::STATUS_CREATED         => 'Created',
+    self::STATUS_ACCEPTED        => 'Accepted',
+    self::STATUS_CONTENT_NO      => 'No Content',
+    self::STATUS_CONTENT_RESET   => 'Reset Content',
+    self::STATUS_CONTENT_PARTIAL => 'Partial Content',
+
+    self::STATUS_PERMANENTLY => 'Moved Permanently',
+    self::STATUS_FOUND       => 'Found',
+    self::STATUS_OTHER       => 'See Other',
+    self::STATUS_UNMODIFIED  => 'Not Modified',
+
+    self::STATUS_BAD          => 'Bad Request',
+    self::STATUS_UNAUTHORIZED => 'Unauthorized',
+    self::STATUS_FORBIDDEN    => 'Forbidden',
+    self::STATUS_MISSING      => 'Not Found',
+    self::STATUS_UNSUPPORTED  => 'Method Not Allowed',
+    self::STATUS_UNACCEPTABLE => 'Not Acceptable',
+    self::STATUS_TIMEOUT      => 'Request Time-out',
+    self::STATUS_CONFLICT     => 'Conflict',
+    self::STATUS_GONE         => 'Gone',
+
+    self::STATUS_INTERNAL      => 'Internal Server Error',
+    self::STATUS_UNIMPLEMENTED => 'Not Implemented',
+    self::STATUS_UNAVAILABLE   => 'Service Unavailable'
+  ];
+
+  /**
+   * @var string
+   */
+  private $_reason;
+  /**
+   * @var int
+   */
+  private $_status;
+
+  /**
+   * Write the message into the input stream
+   *
+   * @param StreamInterface $stream
+   */
+  public function write( $stream ) {
+    // TODO: Implement write() method.
+  }
+
+  /**
+   * @param bool $default Return the default reason for the status if the stored is empty
+   *
+   * @return string
+   */
+  public function getReason( $default = false ) {
+    return $default && empty( $this->_reason ) && isset( static::$REASON[ $this->_status ] ) ? static::$REASON[ $this->_status ] : $this->_reason;
+  }
+  /**
+   * @param string $value
+   *
+   * @return Response
+   */
+  public function setReason( $value ) {
+
+    // FIXME check the value
+    $this->_reason = $value;
+    return $this;
+  }
+
+  /**
+   * @return int
+   */
+  public function getStatus() {
+    return $this->_status;
+  }
+  /**
+   * @param int $value
+   *
+   * @return Response
+   */
+  public function setStatus( $value ) {
+    $this->_status = $value <= 0 ? null : (int) $value;
+    return $this;
+  }
 }

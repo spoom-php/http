@@ -1,5 +1,9 @@
 <?php namespace Http\Message;
 
+use Framework\Storage;
+use Http\Helper\StreamInterface;
+use Http\Helper\Uri;
+use Http\Message;
 use Http\MessageInterface;
 use Http\Helper\UriInterface;
 
@@ -58,7 +62,7 @@ interface RequestInterface extends MessageInterface {
   public function setMethod( $value );
 
   /**
-   * @return UriInterface
+   * @return UriInterface|null
    */
   public function getUri();
   /**
@@ -67,4 +71,63 @@ interface RequestInterface extends MessageInterface {
    * @return static
    */
   public function setUri( $value );
+}
+
+/**
+ * Class Request
+ * @package Http\Message
+ */
+class Request extends Message implements RequestInterface {
+
+  /**
+   * @var string
+   */
+  private $_method = self::METHOD_GET;
+  /**
+   * @var UriInterface|null
+   */
+  private $_uri;
+
+  /**
+   * Write the message into the input stream
+   *
+   * @param StreamInterface $stream
+   */
+  public function write( $stream ) {
+    // TODO: Implement write() method.
+  }
+
+  /**
+   * @return string
+   */
+  public function getMethod() {
+    return $this->_method;
+  }
+  /**
+   * @param string $value
+   *
+   * @return static
+   */
+  public function setMethod( $value ) {
+    $this->_method = $value;
+
+    return $this;
+  }
+
+  /**
+   * @return UriInterface|null
+   */
+  public function getUri() {
+    return $this->_uri;
+  }
+  /**
+   * @param UriInterface|null $value
+   *
+   * @return static
+   */
+  public function setUri( $value ) {
+    $this->_uri = $value ? Uri::instance( $value ) : null;
+
+    return $this;
+  }
 }

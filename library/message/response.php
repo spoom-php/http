@@ -31,7 +31,7 @@ interface ResponseInterface extends MessageInterface {
    * The server successfully processed the request, but is not returning any content.
    * Usually used as a response to a successful delete request.
    */
-  const STATUS_CONTENT_NO = 204;
+  const STATUS_CONTENT_EMPTY = 204;
   /**
    * The server has fulfilled the request and the user agent SHOULD reset the document view which caused the request to be sent
    */
@@ -139,6 +139,16 @@ interface ResponseInterface extends MessageInterface {
    * @param int $value
    */
   public function setStatus( $value );
+
+  /**
+   * @param string     $name
+   * @param mixed|null $value  The (new) value, or null for "remove"
+   * @param int        $expire The (new) expire time
+   * @param array      $option Other options for the cookie (path, domain, ..)
+   *
+   * @return static
+   */
+  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] );
 }
 
 class Response extends Message implements ResponseInterface {
@@ -154,7 +164,7 @@ class Response extends Message implements ResponseInterface {
     self::STATUS_OK              => 'OK',
     self::STATUS_CREATED         => 'Created',
     self::STATUS_ACCEPTED        => 'Accepted',
-    self::STATUS_CONTENT_NO      => 'No Content',
+    self::STATUS_CONTENT_EMPTY   => 'No Content',
     self::STATUS_CONTENT_RESET   => 'Reset Content',
     self::STATUS_CONTENT_PARTIAL => 'Partial Content',
 
@@ -230,5 +240,43 @@ class Response extends Message implements ResponseInterface {
   public function setStatus( $value ) {
     $this->_status = $value <= 0 ? null : (int) $value;
     return $this;
+  }
+
+  /**
+   * @param string     $name
+   * @param mixed|null $value  The (new) value, or null for "remove"
+   * @param string|int $expire The (new) expire time
+   * @param array      $option Other options for the cookie (path, domain, ..)
+   *
+   * @return static
+   */
+  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] ) {
+
+    // implement the remove
+    if( $value === null ) {
+      $expire = 1;
+      $value  = 1;
+    }
+
+    // search and remove the previous cookie
+    $header_list = $this->getHeader( 'set-cookie' );
+    foreach( $header_list as $i => $header ) {
+
+      list( $tmp, $value ) = explode( '=', ltrim( explode( ';', trim( $header ), 2 )[ 0 ] ), 2 );
+      if( $tmp == $name ) unset( $header_list[ $i ] );
+    }
+
+    // create the cookie's data than build it
+    $cookie = [ $name => $value === null ? '' : $value ] + $option;
+    if( !empty( $expire ) ) $cookie[ 'Expires' ] = gmdate( 'D, d M Y H:i:s T', is_numeric( $expire ) ? $expire : strtotime( $expire ) );
+
+    $string = '';
+    foreach( $cookie as $key => $data ) {
+
+      $string .= ( empty( $string ) ? '' : '; ' );
+      $string .= $key . ( $data === true ? '' : ( '=' . $value ) );
+    }
+
+    $header_list[] = $string;
   }
 }

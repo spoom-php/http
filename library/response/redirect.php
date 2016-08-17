@@ -1,7 +1,5 @@
 <?php namespace Http\Response;
 
-use Framework\Exception;
-use Http\Response;
 use Http\Helper\Uri;
 use Http\Message;
 
@@ -26,8 +24,9 @@ class Redirect extends Message\Response {
   /**
    * @inheritDoc
    */
-  public function __construct() {
-
+  public function __construct( $body = null, array $header = [ ], $version = self::VERSION_HTTP1_1 ) {
+    parent::__construct( $body, $header, $version );
+    
     // set basic See Other header (303)
     $this->setStatus( static::STATUS_OTHER );
   }

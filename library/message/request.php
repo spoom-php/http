@@ -1,6 +1,5 @@
 <?php namespace Http\Message;
 
-use Framework\Storage;
 use Http\Helper\StreamInterface;
 use Http\Helper\Uri;
 use Http\Message;
@@ -71,6 +70,13 @@ interface RequestInterface extends MessageInterface {
    * @return static
    */
   public function setUri( $value );
+
+  /**
+   * @param string|null $name Name or null for "every" cookie
+   *
+   * @return mixed|array
+   */
+  public function getCookie( $name = null );
 }
 
 /**
@@ -121,7 +127,7 @@ class Request extends Message implements RequestInterface {
     return $this->_uri;
   }
   /**
-   * @param UriInterface|null $value
+   * @param UriInterface|string|null $value
    *
    * @return static
    */
@@ -129,5 +135,25 @@ class Request extends Message implements RequestInterface {
     $this->_uri = $value ? Uri::instance( $value ) : null;
 
     return $this;
+  }
+
+  /**
+   * @param string|null $name Name or null for "every" cookie
+   *
+   * @return mixed|array
+   */
+  public function getCookie( $name = null ) {
+
+    $cookie = [ ];
+    $header = explode( ';', implode( ';', $this->getHeader( 'cookie' ) ) );
+    foreach( $header as $h ) {
+
+      list( $tmp, $value ) = explode( '=', ltrim( $h ), 2 );
+      $cookie[ $tmp ] = $value;
+
+      if( $tmp == $name ) return $tmp;
+    }
+
+    return $name === null ? $cookie : null;
   }
 }

@@ -1,8 +1,8 @@
 <?php namespace Http\Response;
 
 use Framework\Exception;
+use Http\Helper\Stream;
 use Http\Message;
-use Http\Response;
 
 /**
  * Class File
@@ -49,10 +49,8 @@ class File extends Message\Response {
   /**
    * @inheritDoc
    */
-  public function __construct() {
-
-    // set basic header(s)
-    $this->setHeader( 'binary', 'content-transfer-encoding' );
+  public function __construct( array $header = [ ], $version = self::VERSION_HTTP1_1 ) {
+    parent::__construct( $header + [ 'binary' => 'content-transfer-encoding' ], $version );
   }
 
   /**
@@ -119,7 +117,7 @@ class File extends Message\Response {
         // open and setup the file resource as the buffer
         $tmp = @fopen( $this->_path, 'rb' );
         if( !is_resource( $tmp ) ) throw new Exception\Strict( self::EXCEPTION_FAIL_FILE, [ 'file' => $this->_path ] );
-        else $this->setBody( $tmp );
+        else $this->setBody( Stream::instance( $tmp ) );
       }
     }
   }

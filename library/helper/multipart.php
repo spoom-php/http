@@ -28,7 +28,7 @@ class Multipart extends Library {
   /**
    * Multipart start and end "flag"
    */
-  const SEPARATOR_END          = "--";
+  const SEPARATOR_END = "--";
   /**
    * Header content and name separator
    */
@@ -36,11 +36,11 @@ class Multipart extends Library {
   /**
    * Header content data separator
    */
-  const SEPARATOR_HEAD_DATA    = ";";
+  const SEPARATOR_HEAD_DATA = ";";
   /**
    * Header content data name and value separator
    */
-  const SEPARATOR_HEAD_VALUE   = "=";
+  const SEPARATOR_HEAD_VALUE = "=";
 
   /**
    * The input reading chunk length

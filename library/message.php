@@ -1,5 +1,6 @@
 <?php namespace Http;
 
+use Framework\Exception;
 use Framework\Helper\Library;
 use Http\Helper\StreamInterface;
 
@@ -8,6 +9,10 @@ use Http\Helper\StreamInterface;
  * @package Http
  */
 interface MessageInterface {
+
+  const VERSION_HTTP1   = 'HTTP/1';
+  const VERSION_HTTP1_1 = 'HTTP/1.1';
+  const VERSION_HTTP2   = 'HTTP/2';
 
   /**
    * Write the message into the input stream
@@ -60,9 +65,6 @@ interface MessageInterface {
    * @return static
    */
   public function setBody( $value );
-
-  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] );
-  public function getCookie( $name = null );
 }
 
 /**
@@ -71,19 +73,33 @@ interface MessageInterface {
  */
 abstract class Message extends Library implements MessageInterface {
 
+  const EXCEPTION_INVALID_BODY = 'http#0E';
+
   /**
    * @var string
    */
-  private $_version;
+  private $_version = self::VERSION_HTTP1_1;
   /**
-   * @var StreamInterface
+   * @var StreamInterface|null
    */
   private $_body;
 
   /**
    * @var array[string]
    */
-  private $_header;
+  private $_header = [ ];
+
+  /**
+   * @param StreamInterface|null $body
+   * @param array                $header
+   * @param string               $version
+   */
+  public function __construct( $body = null, array $header = [ ], $version = self::VERSION_HTTP1_1 ) {
+
+    $this->_body    = $body;
+    $this->_header  = $header;
+    $this->_version = $version;
+  }
 
   /**
    * @return string
@@ -92,33 +108,36 @@ abstract class Message extends Library implements MessageInterface {
     return $this->_version;
   }
   /**
-   * @param string $version
+   * @param string $value
    *
    * @return static
    */
-  public function setVersion( $version ) {
-    $this->_version = $version;
+  public function setVersion( $value ) {
 
+    $this->_version = (string) $value;
     return $this;
   }
 
   /**
-   * @return StreamInterface
+   * @return StreamInterface|null
    */
   public function getBody() {
     return $this->_body;
   }
   /**
-   * @param StreamInterface $body
+   * @param StreamInterface|null $value
    *
    * @return static
+   * @throws Exception\Strict
    */
-  public function setBody( $body ) {
+  public function setBody( $value ) {
 
-    // TODO create a stream
-    $this->_body = $body;
+    if( !( $value instanceof StreamInterface ) || $value !== null ) throw new Exception\Strict( static::EXCEPTION_INVALID_BODY );
+    else {
 
-    return $this;
+      $this->_body = $value;
+      return $this;
+    }
   }
 
   /**
@@ -160,12 +179,5 @@ abstract class Message extends Library implements MessageInterface {
     }
 
     return $this;
-  }
-
-  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] ) {
-    // TODO: Implement setCookie() method.
-  }
-  public function getCookie( $name = null ) {
-    // TODO: Implement getCookie() method.
   }
 }

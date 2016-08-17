@@ -53,6 +53,9 @@ interface UriInterface {
    */
   const COMPONENT_FRAGMENT = 'fragment';
 
+  const SCHEME_HTTP  = 'http';
+  const SCHEME_HTTPS = 'https';
+
   /**
    * Default port for HTTP scheme
    */
@@ -66,6 +69,19 @@ interface UriInterface {
    * @return string Format: [scheme:][//[user[:password]@]host[:port]][/path][?query][#fragment]
    */
   public function __toString();
+
+  /**
+   * Merge the components with the ones in the $uri argument
+   *
+   * @param Uri|array|string $uri       The URI definition
+   * @param array            $overwrite The component names that will be overwritten not just extended
+   *
+   * @example  'http/index.php' merged with the 'http://example.com/url' will be http://example.com/url/http/index.php
+   *
+   * @return $this
+   * @throws Exception\Strict
+   */
+  public function merge( $uri, array $overwrite = [ ] );
 
   /**
    * @return string|null
@@ -152,9 +168,11 @@ interface UriInterface {
   public function setFragment( $value );
 
   /**
+   * @param array $filter The component names that will be included in the result
+   *
    * @return array
    */
-  public function getComponent();
+  public function getComponent( array $filter = [ ] );
 }
 
 /**
@@ -193,14 +211,14 @@ class Uri extends Library implements UriInterface {
   const EXCEPTION_INVALID_URI = 'http#15W';
 
   /**
-   * Triggers before the url building. Arguments:
+   * Triggers before the uri building. Arguments:
    *  - instance [Uri]: The Uri instance
-   *  - &component [array]: The URL's component array
+   *  - &component [array]: The URI's component array
    */
-  const EVENT_BUILD = 'url.build';
+  const EVENT_BUILD = 'uri.build';
 
   /**
-   * Map schemes to their default ports. This port will omitted in the URL string if the URL has the scheme's default port
+   * Map schemes to their default ports. This port will omitted in the URI string if the URI has the scheme's default port
    *
    * TODO define the rest known default port
    *
@@ -211,7 +229,7 @@ class Uri extends Library implements UriInterface {
     'https' => self::PORT_HTTPS
   ];
   /**
-   * Helper array that map the components to their string pattern in the URL string
+   * Helper array that map the components to their string pattern in the URI string
    *
    * FIXME add characters from the self::SEPARATOR_* constants
    *
@@ -229,23 +247,7 @@ class Uri extends Library implements UriInterface {
   ];
 
   /**
-   * Default components that will be in the URL string
-   *
-   * @var string[]
-   */
-  protected $allow = [
-    self::COMPONENT_SCHEME,
-    self::COMPONENT_PASSWORD,
-    self::COMPONENT_USER,
-    self::COMPONENT_HOST,
-    self::COMPONENT_PORT,
-    self::COMPONENT_PATH,
-    self::COMPONENT_QUERY,
-    self::COMPONENT_FRAGMENT
-  ];
-
-  /**
-   * Storage of the URL components
+   * Storage of the URI components
    *
    * @var mixed[string]
    */
@@ -253,8 +255,8 @@ class Uri extends Library implements UriInterface {
 
   /**
    * @param string|array          $query The query array or string that will parsed into array
-   * @param string|null           $path  The path of the URL
-   * @param Uri|string|array|null $root  The root URL definition. The new instance will be extended with this URL
+   * @param string|null           $path  The path of the URI
+   * @param Uri|string|array|null $root  The root URI definition. The new instance will be extended with this URI
    */
   public function __construct( $query = [ ], $path = null, $root = null ) {
 
@@ -263,40 +265,24 @@ class Uri extends Library implements UriInterface {
     $this->path  = $path;
 
     // parse the root definition if has any and add it's components to the instance
-    if( !empty( $root ) ) $this->extend( $root );
+    if( !empty( $root ) ) $this->merge( $root );
   }
 
   /**
-   * Build with default arguments
-   *
-   * @return string
-   */
-  public function __toString() {
-    return $this->build();
-  }
-
-  /**
-   * Build the stored URL components into an URL string
-   *
-   * @param array $allow The array of component names that will be in the URL string
+   * Build the stored URI components into an URI string
    *
    * @return string
    * @throws Exception\Strict
    */
-  public function build( array $allow = null ) {
+  public function __toString() {
 
-    // add the default components
-    if( empty( $allow ) ) $allow = $this->allow;
-
-    $component = $this->_component;
+    $component = $this->getComponent();
     $extension = Extension::instance( 'http' );
     $extension->trigger( self::EVENT_BUILD, [ 'instance' => $this, 'component' => &$component ] );
 
     // preprocess the components
     foreach( $component as $name => &$value ) {
-
-      if( !in_array( $name, $allow ) ) unset( $component[ $name ] );
-      else switch( $name ) {
+      switch( $name ) {
         // convert the array query into a string
         case self::COMPONENT_QUERY:
 
@@ -316,7 +302,7 @@ class Uri extends Library implements UriInterface {
         // check the host if user is defined
         case self::COMPONENT_USER:
 
-          // cannot build an URL with scheme or user and no host
+          // cannot build an URI with scheme or user and no host
           if( !isset( $component[ self::COMPONENT_HOST ] ) ) {
             throw new Exception\Strict( self::EXCEPTION_INVALID_URI, [ 'component' => $component ] );
           }
@@ -325,7 +311,7 @@ class Uri extends Library implements UriInterface {
         // check for a user definition if password id provided
         case self::COMPONENT_PASSWORD:
 
-          // cannot build an URL with password and no user
+          // cannot build an URI with password and no user
           if( !isset( $component[ self::COMPONENT_USER ] ) ) {
             throw new Exception\Strict( self::EXCEPTION_INVALID_URI, [ 'component' => $component ] );
           }
@@ -334,7 +320,7 @@ class Uri extends Library implements UriInterface {
         // convert the path to absolute if there is host definition
         case self::COMPONENT_PATH:
 
-          // there is no relative URL with host definition
+          // there is no relative URI with host definition
           if( isset( $component[ self::COMPONENT_HOST ] ) ) {
             $value = '/' . ltrim( $value, '/' );
           }
@@ -364,24 +350,25 @@ class Uri extends Library implements UriInterface {
 
     return String::insert( $string, $component );
   }
+
   /**
-   * Extend the components with the ones in the $uri argument
+   * Merge the components with the ones in the $uri argument
    *
-   * @param Uri|array|string $uri       The URL definition
+   * @param Uri|array|string $uri       The URI definition
    * @param array            $overwrite The component names that will be overwritten not just extended
    *
-   * @example  'http/index.php' extended with the 'http://example.com/url' will be http://example.com/url/http/index.php
+   * @example  'http/index.php' merged with the 'http://example.com/url' will be http://example.com/url/http/index.php
    *
    * @return $this
    * @throws Exception\Strict
    */
-  public function extend( $uri, array $overwrite = [ ] ) {
+  public function merge( $uri, array $overwrite = [ ] ) {
 
-    // parse the URL
-    $uri = self::instance( $uri );
+    // parse the URI
+    $uri = static::instance( $uri );
 
-    // handle simple overwrite cases 
-    $allow = [ self::COMPONENT_SCHEME, self::COMPONENT_USER, self::COMPONENT_PASSWORD, self::COMPONENT_HOST ];
+    // handle simple overwrite cases
+    $allow = [ static::COMPONENT_SCHEME, static::COMPONENT_USER, static::COMPONENT_PASSWORD, static::COMPONENT_HOST ];
     foreach( $allow as $component ) if( !isset( $this->{$component} ) || in_array( $component, $overwrite ) ) {
       $this->{$component} = $uri->{$component};
     }
@@ -390,7 +377,12 @@ class Uri extends Library implements UriInterface {
     $allow = [ self::COMPONENT_PATH, self::COMPONENT_FRAGMENT ];
     foreach( $allow as $component ) if( isset( $uri->{$component} ) ) {
       if( in_array( $component, $overwrite ) ) $this->{$component} = $uri->{$component};
-      else $this->{$component} = rtrim( $uri->{$component}, '/' ) . '/' . $this->{$component};
+      else if( $component != self::COMPONENT_PATH ) $this->{$component} = $uri->{$component} . $this->{$component};
+      else {
+
+        // FIXME re-think this extending mechanism (not logical)
+        $this->{$component} = rtrim( $uri->{$component}, '/' ) . '/' . $this->{$component};
+      }
     }
 
     // handle the super special query case
@@ -548,18 +540,32 @@ class Uri extends Library implements UriInterface {
   }
 
   /**
+   * @param array $filter
+   *
    * @return array
    */
-  public function getComponent() {
-    return $this->_component;
+  public function getComponent( array $filter = [ ] ) {
+
+    if( empty( $filter ) ) return $this->_component;
+    else {
+
+      $tmp = [ ];
+      foreach( $filter as $key ) {
+        if( isset( $this->_component[ $key ] ) ) {
+          $tmp[ $key ] = $this->_component[ $key ];
+        }
+      }
+
+      return $tmp;
+    }
   }
 
   /**
    * Process the definition into an Uri instance
    *
-   * @param Uri|array|string $definition The string representation of an URL, or an array of URL components
+   * @param UriInterface|array|string $definition The string representation of an URI, or an array of URI components
    *
-   * @return Uri
+   * @return static
    * @throws Exception\Strict
    */
   public static function instance( $definition ) {

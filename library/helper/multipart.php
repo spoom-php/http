@@ -14,7 +14,7 @@ class Multipart extends Library {
   /**
    * @var resource[]
    */
-  private static $resource = [ ];
+  private static $resource = [];
 
   /**
    * Invalid end of the multipart input
@@ -28,7 +28,7 @@ class Multipart extends Library {
   /**
    * Multipart start and end "flag"
    */
-  const SEPARATOR_END          = "--";
+  const SEPARATOR_END = "--";
   /**
    * Header content and name separator
    */
@@ -36,11 +36,11 @@ class Multipart extends Library {
   /**
    * Header content data separator
    */
-  const SEPARATOR_HEAD_DATA    = ";";
+  const SEPARATOR_HEAD_DATA = ";";
   /**
    * Header content data name and value separator
    */
-  const SEPARATOR_HEAD_VALUE   = "=";
+  const SEPARATOR_HEAD_VALUE = "=";
 
   /**
    * The input reading chunk length
@@ -72,7 +72,7 @@ class Multipart extends Library {
   public function __construct( $input ) {
 
     $this->stream = $input;
-    $this->_data  = [ ];
+    $this->_data  = [];
 
     $buffer = '';
 
@@ -81,7 +81,7 @@ class Multipart extends Library {
     if( !empty( $boundary ) ) while( true ) {
 
       // the first lines (min 1) is the headers of the value
-      $headers = [ ];
+      $headers = [];
       while( true ) {
 
         // read until we find a line that is not header (empty line)
@@ -125,7 +125,7 @@ class Multipart extends Library {
     list( $name, $content ) = explode( self::SEPARATOR_HEAD_CONTENT, $tmp );
 
     // process the content' into options
-    $options = [ ];
+    $options = [];
     $content = explode( self::SEPARATOR_HEAD_DATA, $content );
     foreach( $content as &$part ) {
 

@@ -37,7 +37,7 @@ class Input extends Storage {
    * @param string|null          $format
    */
   public function __construct( $uri, $body = null, $format = null ) {
-    parent::__construct( [ ], static::NAMESPACE_REQUEST );
+    parent::__construct( [], static::NAMESPACE_REQUEST );
 
     // trigger the process event
     $extension = Extension::instance( 'http' );
@@ -55,14 +55,14 @@ class Input extends Storage {
       // choose processor based on the body format
       if( is_resource( $body ) ) try {
 
-        $data = [ ];
+        $data = [];
         switch( $format ) {
 
           // handle multipart messages
           case 'multipart/form-data':
 
             // temporary data storages
-            $raw = [ ];
+            $raw = [];
 
             // TODO extract and use the boundary from the content-type
 
@@ -112,7 +112,7 @@ class Input extends Storage {
                 $query .= '&' . $value[ 'name' ] . '=' . urlencode( $key );
               }
 
-              $keys = [ ];
+              $keys = [];
               parse_str( substr( $query, 1 ), $keys );
               array_walk_recursive( $keys, function ( &$key ) use ( $raw ) {
                 $key = $raw[ $key ][ 'value' ];

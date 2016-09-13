@@ -1,5 +1,6 @@
 <?php namespace Http\Message;
 
+use Framework\Exception;
 use Http\Helper\StreamInterface;
 use Http\Message;
 use Http\MessageInterface;
@@ -121,37 +122,59 @@ interface ResponseInterface extends MessageInterface {
   const STATUS_UNAVAILABLE = 503;
 
   /**
-   * @param bool $default Return the default reason for the status if the stored is empty
+   * Get the default reason message for the status code, or the stored one
    *
    * @return string
    */
-  public function getReason( $default = false );
+  public function getReason();
   /**
-   * @param string $value
+   * Set the reason message
+   *
+   * @param string|null $value Direct message or null for reset to default
+   *
+   * @return static
    */
   public function setReason( $value );
 
   /**
+   * Get the status code
+   *
    * @return int
    */
   public function getStatus();
   /**
-   * @param int $value
+   * Set the status code
+   *
+   * @param int $value Zero means default
+   *
+   * @return static
    */
   public function setStatus( $value );
 
   /**
+   * Set, remove (or edit) a cookie for the response
+   *
    * @param string     $name
    * @param mixed|null $value  The (new) value, or null for "remove"
-   * @param int        $expire The (new) expire time
+   * @param string|int $expire The (new) expire time in s or datetime string
    * @param array      $option Other options for the cookie (path, domain, ..)
    *
    * @return static
    */
-  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] );
+  public function setCookie( $name, $value = null, $expire = 0, $option = [] );
 }
-
+/**
+ * Class Response
+ * @package Http\Message
+ */
 class Response extends Message implements ResponseInterface {
+
+  /**
+   * Invalid status code
+   *
+   * @param mixed $value The wrong input
+   */
+  const EXCEPTION_INVALID_STATUS = 'http#0E';
 
   /**
    * The status codes default reason phrases
@@ -189,13 +212,26 @@ class Response extends Message implements ResponseInterface {
   ];
 
   /**
-   * @var string
+   * @var string|null
    */
-  private $_reason;
+  private $_reason = null;
   /**
    * @var int
    */
-  private $_status;
+  private $_status = 0;
+
+  /**
+   * @param int                  $status
+   * @param array                $header
+   * @param StreamInterface|null $body
+   */
+  public function __construct( $status = self::STATUS_OK, array $header = [], $body = null ) {
+
+    $this->setBody( $body );
+    $this->setHeader( $header );
+
+    $this->setStatus( $status );
+  }
 
   /**
    * Write the message into the input stream
@@ -207,55 +243,66 @@ class Response extends Message implements ResponseInterface {
   }
 
   /**
-   * @param bool $default Return the default reason for the status if the stored is empty
+   * Get the default reason message for the status code, or the stored one
    *
    * @return string
    */
-  public function getReason( $default = false ) {
-    return $default && empty( $this->_reason ) && isset( static::$REASON[ $this->_status ] ) ? static::$REASON[ $this->_status ] : $this->_reason;
+  public function getReason() {
+    return empty( $this->_reason ) && isset( static::$REASON[ $this->_status ] ) ? static::$REASON[ $this->_status ] : $this->_reason;
   }
   /**
-   * @param string $value
+   * Set the reason message
    *
-   * @return Response
+   * @param string|null $value Direct message or null for reset to default
+   *
+   * @return static
    */
   public function setReason( $value ) {
-
-    // FIXME check the value
-    $this->_reason = $value;
+    $this->_reason = !empty( $value ) ? (string) $value : null;
     return $this;
   }
 
   /**
+   * Get the status code
+   *
    * @return int
    */
   public function getStatus() {
     return $this->_status;
   }
   /**
-   * @param int $value
+   * Set the status code
    *
-   * @return Response
+   * @param int $value Zero means default
+   *
+   * @return static
+   * @throws Exception\Strict
    */
   public function setStatus( $value ) {
-    $this->_status = $value <= 0 ? null : (int) $value;
-    return $this;
+
+    if( $value < 0 ) throw new Exception\Strict( static::EXCEPTION_INVALID_STATUS, [ 'value' => $value ] );
+    else {
+
+      $this->_status = (int) $value;
+      return $this;
+    }
   }
 
   /**
+   * Set, remove (or edit) a cookie(s) for the response
+   *
    * @param string     $name
    * @param mixed|null $value  The (new) value, or null for "remove"
-   * @param string|int $expire The (new) expire time
+   * @param string|int $expire The (new) expire time in s or datetime string
    * @param array      $option Other options for the cookie (path, domain, ..)
    *
    * @return static
    */
-  public function setCookie( $name, $value = null, $expire = 0, $option = [ ] ) {
+  public function setCookie( $name, $value = null, $expire = 0, $option = [] ) {
 
-    // implement the remove
+    // remove implementation
     if( $value === null ) {
-      $expire = 1;
-      $value  = 1;
+      $expire = $value = 1;
     }
 
     // search and remove the previous cookie
@@ -268,7 +315,7 @@ class Response extends Message implements ResponseInterface {
 
     // create the cookie's data than build it
     $cookie = [ $name => $value === null ? '' : $value ] + $option;
-    if( !empty( $expire ) ) $cookie[ 'Expires' ] = gmdate( 'D, d M Y H:i:s T', is_numeric( $expire ) ? $expire : strtotime( $expire ) );
+    if( !empty( $expire ) ) $cookie[ 'expires' ] = gmdate( MessageInterface::DATE_FORMAT, is_numeric( $expire ) ? $expire : strtotime( $expire ) );
 
     $string = '';
     foreach( $cookie as $key => $data ) {
@@ -278,5 +325,6 @@ class Response extends Message implements ResponseInterface {
     }
 
     $header_list[] = $string;
+    return $this;
   }
 }

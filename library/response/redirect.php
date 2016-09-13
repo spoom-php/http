@@ -24,11 +24,8 @@ class Redirect extends Message\Response {
   /**
    * @inheritDoc
    */
-  public function __construct( $body = null, array $header = [ ], $version = self::VERSION_HTTP1_1 ) {
-    parent::__construct( $body, $header, $version );
-    
-    // set basic See Other header (303)
-    $this->setStatus( static::STATUS_OTHER );
+  public function __construct( $status = self::STATUS_OTHER, array $header = [], $body = null ) {
+    parent::__construct( $status, $header, $body );
   }
 
   /**

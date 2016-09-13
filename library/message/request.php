@@ -1,5 +1,6 @@
 <?php namespace Http\Message;
 
+use Framework\Exception;
 use Http\Helper\StreamInterface;
 use Http\Helper\Uri;
 use Http\Message;
@@ -50,35 +51,46 @@ interface RequestInterface extends MessageInterface {
   const METHOD_DELETE = 'delete';
 
   /**
+   * Get the request method
+   *
    * @return string
    */
   public function getMethod();
   /**
+   * Set the request method, cannot be empty
+   *
    * @param string $value
    *
    * @return static
+   * @throws Exception\Strict
    */
   public function setMethod( $value );
 
   /**
-   * @return UriInterface|null
+   * Get the request Uri
+   *
+   * @return UriInterface
    */
   public function getUri();
   /**
-   * @param UriInterface $value
+   * Set the request Uri, cannot be empty
+   *
+   * @param UriInterface|string $value
    *
    * @return static
+   * @throws Exception\Strict
    */
   public function setUri( $value );
 
   /**
-   * @param string|null $name Name or null for "every" cookie
+   * Get a (or all) cookie(s) in the request
+   *
+   * @param string|null $name Name or null for all cookie
    *
    * @return mixed|array
    */
   public function getCookie( $name = null );
 }
-
 /**
  * Class Request
  * @package Http\Message
@@ -86,13 +98,37 @@ interface RequestInterface extends MessageInterface {
 class Request extends Message implements RequestInterface {
 
   /**
+   * Try to set an invalid (empty) method
+   */
+  const EXCEPTION_INVALID_METHOD = 'http#0E';
+  /**
+   * Try to set an invalid (empty) uri
+   */
+  const EXCEPTION_INVALID_URI = 'http#0E';
+
+  /**
    * @var string
    */
   private $_method = self::METHOD_GET;
   /**
-   * @var UriInterface|null
+   * @var UriInterface
    */
   private $_uri;
+
+  /**
+   * @param UriInterface|string  $uri
+   * @param string               $method
+   * @param StreamInterface|null $body
+   * @param array                $header
+   */
+  public function __construct( $uri, $method = self::METHOD_GET, $body = null, array $header = [] ) {
+
+    $this->setBody( $body );
+    $this->setHeader( $header );
+
+    $this->setUri( $uri );
+    $this->setMethod( $method );
+  }
 
   /**
    * Write the message into the input stream
@@ -104,47 +140,67 @@ class Request extends Message implements RequestInterface {
   }
 
   /**
+   * Get the request method
+   *
    * @return string
    */
   public function getMethod() {
     return $this->_method;
   }
   /**
+   * Set the request method, cannot be empty
+   *
    * @param string $value
    *
    * @return static
+   * @throws Exception\Strict
    */
   public function setMethod( $value ) {
-    $this->_method = $value;
 
-    return $this;
+    if( empty( $value ) ) throw new Exception\Strict( static::EXCEPTION_INVALID_METHOD );
+    else {
+
+      $this->_method = $value;
+      return $this;
+    }
   }
 
   /**
-   * @return UriInterface|null
+   * Get the request Uri
+   *
+   * @return UriInterface
    */
   public function getUri() {
     return $this->_uri;
   }
   /**
-   * @param UriInterface|string|null $value
+   * Set the request Uri, cannot be empty
+   *
+   * @param UriInterface|string $value
    *
    * @return static
+   * @throws Exception\Strict
    */
   public function setUri( $value ) {
-    $this->_uri = $value ? Uri::instance( $value ) : null;
 
-    return $this;
+    if( empty( $value ) ) throw new Exception\Strict( static::EXCEPTION_INVALID_URI );
+    else {
+
+      $this->_uri = Uri::instance( $value );
+      return $this;
+    }
   }
 
   /**
-   * @param string|null $name Name or null for "every" cookie
+   * Get a (or all) cookie(s) in the request
+   *
+   * @param string|null $name Name or null for all cookie
    *
    * @return mixed|array
    */
   public function getCookie( $name = null ) {
 
-    $cookie = [ ];
+    $cookie = [];
     $header = explode( ';', implode( ';', $this->getHeader( 'cookie' ) ) );
     foreach( $header as $h ) {
 

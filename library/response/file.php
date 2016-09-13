@@ -49,8 +49,8 @@ class File extends Message\Response {
   /**
    * @inheritDoc
    */
-  public function __construct( array $header = [ ], $version = self::VERSION_HTTP1_1 ) {
-    parent::__construct( $header + [ 'binary' => 'content-transfer-encoding' ], $version );
+  public function __construct( $status = self::STATUS_OK, array $header = [], $body = null ) {
+    parent::__construct( $status, $header + [ 'binary' => 'content-transfer-encoding' ], $body );
   }
 
   /**

@@ -22,27 +22,28 @@ interface StreamInterface extends \Countable {
    * @param string|StreamInterface $content The content to write
    * @param int|null               $offset  Offset in the stream where to write. Default (===null) is the current cursor
    *
-   * @return $this
+   * @return static
    * @throws Exception\Strict
    */
   public function write( $content, $offset = null );
   /**
    * Read from the stream
    *
-   * @param int      $length The maximum byte to read
-   * @param int|null $offset Offset in the stream to read from. Default (===null) is the current cursor
+   * @param int                  $length The maximum byte to read
+   * @param int|null             $offset Offset in the stream to read from. Default (===null) is the current cursor
+   * @param StreamInterface|null $stream Output stream if specified
    *
    * @return string
    * @throws Exception\Strict
    */
-  public function read( $length, $offset = null );
+  public function read( $length, $offset = null, $stream = null );
 
   /**
    * Move the internal cursor within the stream
    *
    * @param int $offset The new cursor position
    *
-   * @return $this
+   * @return static
    * @throws Exception\Strict
    */
   public function seek( $offset = 0 );
@@ -96,6 +97,7 @@ class Stream extends Library implements StreamInterface {
   const EXCEPTION_INVALID_OPERATION = 'http#0E';
   const EXCEPTION_INVALID_OFFSET    = 'http#0E';
   const EXCEPTION_INVALID_RESOURCE  = 'http#0E';
+  const EXCEPTION_INVALID_STREAM    = 'http#0E';
 
   /**
    * @var resource
@@ -116,28 +118,34 @@ class Stream extends Library implements StreamInterface {
   }
 
   /**
+   * @inheritDoc
+   */
+  function __toString() {
+    return $this->isReadable() ? $this->read( $this->count() ) : "";
+  }
+
+  /**
    * Write to the stream
    *
    * @param string|StreamInterface $content The content to write
    * @param int|null               $offset  Offset in the stream where to write. Default (===null) is the current cursor
    *
-   * @return $this
+   * @return static
    * @throws Exception\Strict
    */
   public function write( $content, $offset = null ) {
-
     if( !$this->isWritable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_OPERATION, [ 'meta' => $this->getMeta() ] );
     else {
 
       // seek to a position if given
       if( $offset !== null ) {
-        if( !$this->isSeekable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_OPERATION, [ 'meta' => $this->getMeta() ] );
-        else $this->seek( $offset );
+        $this->seek( $offset );
       }
 
       // write the content
-      if( $content instanceof StreamInterface ) stream_copy_to_stream( $content->getResource(), $this->_resource );
-      else fwrite( $this->_resource, $content );
+      if( !( $content instanceof StreamInterface ) ) fwrite( $this->_resource, $content );
+      else if( !$content->isReadable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_STREAM, [ 'value' => $content ] );
+      else stream_copy_to_stream( $content->getResource(), $this->_resource );
 
       return $this;
     }
@@ -145,25 +153,30 @@ class Stream extends Library implements StreamInterface {
   /**
    * Read from the stream
    *
-   * @param int      $length The maximum byte to read
-   * @param int|null $offset Offset in the stream to read from. Default (===null) is the current cursor
+   * @param int                  $length The maximum byte to read
+   * @param int|null             $offset Offset in the stream to read from. Default (===null) is the current cursor
+   * @param StreamInterface|null $stream Output stream if specified
    *
    * @return string
    * @throws Exception\Strict
    */
-  public function read( $length, $offset = null ) {
-
+  public function read( $length, $offset = null, $stream = null ) {
     if( !$this->isReadable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_OPERATION, [ 'meta' => $this->getMeta() ] );
     else {
 
       // seek to a position if given
       if( $offset !== null ) {
-        if( !$this->isSeekable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_OPERATION, [ 'meta' => $this->getMeta() ] );
-        else $this->seek( $offset );
+        $this->seek( $offset );
       }
 
       // read the content
-      return fread( $this->_resource, $length );
+      if( !$stream ) return fread( $this->_resource, $length );
+      else if( !( $stream instanceof StreamInterface ) || !$stream->isWritable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_STREAM, [ 'value' => $stream ] );
+      else {
+
+        stream_copy_to_stream( $this->_resource, $stream->getResource(), $length );
+        return null;
+      }
     }
   }
 
@@ -172,7 +185,7 @@ class Stream extends Library implements StreamInterface {
    *
    * @param int $offset The new cursor position
    *
-   * @return $this
+   * @return static
    * @throws Exception\Strict
    */
   public function seek( $offset = 0 ) {
@@ -254,9 +267,9 @@ class Stream extends Library implements StreamInterface {
   }
 
   /**
-   * @param $value
+   * @param StreamInterface|resource $value
    *
-   * @return static
+   * @return StreamInterface
    * @throws Exception\Strict
    */
   public static function instance( $value ) {

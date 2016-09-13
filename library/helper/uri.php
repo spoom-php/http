@@ -174,7 +174,6 @@ interface UriInterface {
    */
   public function getComponent( array $filter = [ ] );
 }
-
 /**
  * Class Uri
  * @package Http
@@ -565,7 +564,7 @@ class Uri extends Library implements UriInterface {
    *
    * @param UriInterface|array|string $definition The string representation of an URI, or an array of URI components
    *
-   * @return static
+   * @return UriInterface
    * @throws Exception\Strict
    */
   public static function instance( $definition ) {

@@ -55,7 +55,7 @@ class Listener implements FeasibleInterface {
     // TODO test this definition in other environments
     $this->enable = stripos( 'http', $this->storage->getString( 'SERVER_PROTOCOL' ) ) === 0 ||
       $this->storage->exist( 'REQUEST_METHOD' ) ||
-      in_array( PHP_SAPI, $this->extension->option( 'default:sapi!array', [ ] ) );
+      in_array( PHP_SAPI, $this->extension->option( 'default:sapi!array', [] ) );
   }
 
   /**
@@ -78,7 +78,18 @@ class Listener implements FeasibleInterface {
       $manager = Manager::instance();
 
       if( !$manager->getRequest() ) {
-        $request = new Message\Request();
+
+        // build the request uri
+        $secure = $this->storage->getString( 'HTTPS', 'off' ) != 'off' || $this->storage->getString( 'HTTP_X_FORWARDED_PROTO' ) == 'https';
+        $scheme = $this->storage->getString( 'REQUEST_SCHEME', $secure ? Helper\UriInterface::SCHEME_HTTPS : Helper\UriInterface::SCHEME_HTTP );
+
+        $tmp = $this->storage->getString( 'HTTP_X_FORWARDED_HOST', $this->storage->getString( 'HTTP_HOST', $this->storage->getString( 'SERVER_NAME' ) ) );
+        list( $host, $tmp ) = explode( ':', $tmp );
+
+        $port = !empty( $tmp ) ? (int) $tmp : $this->storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
+
+        // create the request
+        $request = new Message\Request( "{$scheme}://{$host}:{$port}" . $this->storage->getString( 'REQUEST_URI' ) );
 
         // set the request body and method
         $request->setBody( Stream::instance( fopen( 'php://input', 'r' ) ) );
@@ -93,23 +104,13 @@ class Listener implements FeasibleInterface {
           }
         }
 
-        // set the request uri
-        $secure = $this->storage->getString( 'HTTPS', 'off' ) != 'off' || $this->storage->getString( 'HTTP_X_FORWARDED_PROTO' ) == 'https';
-        $scheme = $this->storage->getString( 'REQUEST_SCHEME', $secure ? Helper\UriInterface::SCHEME_HTTPS : Helper\UriInterface::SCHEME_HTTP );
-
-        $tmp = $this->storage->getString( 'HTTP_X_FORWARDED_HOST', $this->storage->getString( 'HTTP_HOST', $this->storage->getString( 'SERVER_NAME' ) ) );
-        list( $host, $tmp ) = explode( ':', $tmp );
-
-        $port = !empty( $tmp ) ? (int) $tmp : $this->storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
-        $request->setUri( "{$scheme}://{$host}:{$port}" . $this->storage->getString( 'REQUEST_URI' ) );
-
         // define the uri base from the request uri
-        $uri       = Uri::instance( $request->getUri()->getComponent( [
+        $uri = Uri::instance( $request->getUri()->getComponent( [
           Helper\UriInterface::COMPONENT_SCHEME,
           Helper\UriInterface::COMPONENT_HOST,
           Helper\UriInterface::COMPONENT_PORT
         ] ) );
-        $uri->path = rtrim( dirname( $this->storage->getString( 'SCRIPT_NAME' ) ), '/' ) . '/';
+        $uri->setPath( rtrim( dirname( $this->storage->getString( 'SCRIPT_NAME' ) ), '/' ) . '/' );
 
         // set the default request object
         $manager->setRequest( $request, $uri );
@@ -131,7 +132,7 @@ class Listener implements FeasibleInterface {
       }
 
     } catch( \Exception $e ) {
-      $this->exception = Exception\Helper::wrap( $e )->log( [ ], $this->extension->log );
+      $this->exception = Exception\Helper::wrap( $e )->log( [], $this->extension->log );
     }
   }
   /**
@@ -146,7 +147,7 @@ class Listener implements FeasibleInterface {
       if( $event->collector->contains() ) throw $event->collector->get();
 
     } catch( \Exception $e ) {
-      $this->exception = Exception\Helper::wrap( $e )->log( [ ], $this->extension->log );
+      $this->exception = Exception\Helper::wrap( $e )->log( [], $this->extension->log );
     }
 
     $manager = Manager::instance();
@@ -166,7 +167,7 @@ class Listener implements FeasibleInterface {
       }
 
     } catch( \Exception $e ) {
-      $this->exception = Exception\Helper::wrap( $e )->log( [ ], $this->extension->log );
+      $this->exception = Exception\Helper::wrap( $e )->log( [], $this->extension->log );
     }
   }
   /**

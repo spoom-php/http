@@ -8,6 +8,7 @@ use Framework\Storage;
 use Http\Helper\Stream;
 use Http\Helper\Uri;
 use Http\Message\Request;
+use Http\Message\Response;
 
 /**
  * Class Listener
@@ -84,7 +85,7 @@ class Listener implements FeasibleInterface {
         $scheme = $this->storage->getString( 'REQUEST_SCHEME', $secure ? Helper\UriInterface::SCHEME_HTTPS : Helper\UriInterface::SCHEME_HTTP );
 
         $tmp = $this->storage->getString( 'HTTP_X_FORWARDED_HOST', $this->storage->getString( 'HTTP_HOST', $this->storage->getString( 'SERVER_NAME' ) ) );
-        list( $host, $tmp ) = explode( ':', $tmp );
+        @list( $host, $tmp ) = explode( ':', $tmp );
 
         $port = !empty( $tmp ) ? (int) $tmp : $this->storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
 
@@ -97,6 +98,8 @@ class Listener implements FeasibleInterface {
         $request->setVersion( $this->storage->getString( 'SERVER_PROTOCOL', 'HTTP1/1' ) ); // FIXME extract to const and decide the 'HTTP' part's fate
 
         // set headers
+        $request->setHeader( $this->storage->getString( 'CONTENT_TYPE' ), 'content-type' );
+        $request->setHeader( $this->storage->getNumber( 'CONTENT_LENGTH' ), 'content-length' );
         foreach( $_SERVER as $key => $value ) {
           if( strpos( $key, 'HTTP_' ) === 0 ) {
             $key = str_replace( '_', '-', mb_strtolower( substr( $key, strlen( 'HTTP_' ) ) ) );
@@ -166,6 +169,8 @@ class Listener implements FeasibleInterface {
         $response->setStatus( $exception instanceof Exception\Runtime ? Message\ResponseInterface::STATUS_BAD : Message\ResponseInterface::STATUS_INTERNAL );
       }
 
+      $manager->setResponse( $response );
+
     } catch( \Exception $e ) {
       $this->exception = Exception\Helper::wrap( $e )->log( [], $this->extension->log );
     }
@@ -192,7 +197,8 @@ class Listener implements FeasibleInterface {
       foreach( $header as $value ) {
         list( $name, $value ) = explode( ':', $value, 2 );
 
-        if( !count( $response->getHeader( $name ) ) ) {
+        $tmp = $response->getHeader( $name );
+        if( empty( $tmp ) ) {
           $response->setHeader( $value, $name );
         }
       }
@@ -204,7 +210,11 @@ class Listener implements FeasibleInterface {
       // 
       $header = $response->getHeader();
       foreach( $header as $name => $value ) {
-        header( ucwords( $name ) . ": {$value}" );
+
+        $value = is_array( $value ) ? $value : [ $value ];
+        foreach( $value as $data ) {
+          header( ucwords( $name ) . ": {$data}" );
+        }
       }
 
       // send the response body to the output 

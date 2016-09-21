@@ -52,8 +52,10 @@ class Input extends Storage {
 
       $this->set( self::NAMESPACE_URI . ':', $uri->getQuery() );
 
+      // FIXME handle $_POST data if the body is "empty"
+
       // choose processor based on the body format
-      if( is_resource( $body ) ) try {
+      if( $body ) try {
 
         $data = [];
         switch( $format ) {
@@ -67,7 +69,7 @@ class Input extends Storage {
             // TODO extract and use the boundary from the content-type
 
             // process the multipart data into the raw containers (to process the array names later)
-            $multipart = new Multipart( $body );
+            $multipart = new Multipart( $body->getResource() );
             foreach( $multipart->data as $value ) {
               if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
 
@@ -126,7 +128,7 @@ class Input extends Storage {
           // handle message like a query string
           case 'application/x-www-form-urlencoded':
 
-            $tmp = stream_get_contents( $body );
+            $tmp = (string) $body;
             parse_str( $tmp, $data );
 
             break;
@@ -135,7 +137,7 @@ class Input extends Storage {
           case 'application/json':
           case 'text/json':
 
-            $tmp  = stream_get_contents( $body );
+            $tmp  = (string) $body;
             $data = Enumerable::fromJson( $tmp, true );
 
             break;
@@ -144,7 +146,7 @@ class Input extends Storage {
           case 'application/xml':
           case 'text/xml':
 
-            $tmp  = stream_get_contents( $body );
+            $tmp  = (string) $body;
             $data = Enumerable::fromXml( $tmp );
 
             break;
@@ -171,6 +173,8 @@ class Input extends Storage {
    * @return static
    */
   public static function instance( Message\RequestInterface $request ) {
-    return new static( $request->getUri(), $request->getBody(), $request->getHeader( 'content-type' )[ 0 ] );
+    $tmp = $request->getHeader( 'content-type' );
+    list( $tmp ) = explode( ';', is_array( $tmp ) ? implode( ';', $tmp ) : $tmp );
+    return new static( $request->getUri(), $request->getBody(), $tmp );
   }
 }

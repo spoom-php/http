@@ -1,4 +1,4 @@
-<?php namespace Http\Response;
+<?php namespace Http\Message\Response;
 
 use Framework\Exception;
 use Http\Helper\Stream;
@@ -6,7 +6,7 @@ use Http\Message;
 
 /**
  * Class File
- * @package Http\Response
+ * @package Http\Message\Response
  *
  * @property string  $path     The full path to the file
  * @property string  $name     The output file name with extesion (populated from the path if empty)
@@ -106,18 +106,24 @@ class File extends Message\Response {
     } else {
 
       $value = (string) $value;
-      if( !is_file( $value ) ) throw new Exception\Strict( self::EXCEPTION_MISSING_FILE, [ 'file' => $this->_path ] );
-      else if( !is_readable( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_FILE, [ 'file' => $this->_path ] );
+      if( !is_file( $value ) ) throw new Exception\Strict( self::EXCEPTION_MISSING_FILE, [ 'file' => $value ] );
+      else if( !is_readable( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_FILE, [ 'file' => $value ] );
       else {
 
-        // setup file specific headers
-        $this->setHeader( filesize( $value ), 'content-length' );
-        if( $name ) $this->setName( pathinfo( $this->_path, PATHINFO_BASENAME ) );
-
         // open and setup the file resource as the buffer
-        $tmp = @fopen( $this->_path, 'rb' );
-        if( !is_resource( $tmp ) ) throw new Exception\Strict( self::EXCEPTION_FAIL_FILE, [ 'file' => $this->_path ] );
-        else $this->setBody( Stream::instance( $tmp ) );
+        $tmp = @fopen( $value, 'rb' );
+        if( !is_resource( $tmp ) ) throw new Exception\Strict( self::EXCEPTION_FAIL_FILE, [ 'file' => $value ] );
+        else {
+
+          $this->setBody( Stream::instance( $tmp ) );
+          $this->_path = $value;
+
+          // setup file specific headers
+          $this->setHeader( filesize( $value ), 'content-length' );
+          $tmp = mime_content_type( $value );
+          if( !empty( $tmp ) ) $this->setHeader( $tmp, 'content-type' );
+          if( $name ) $this->setName( pathinfo( $value, PATHINFO_BASENAME ) );
+        }
       }
     }
   }

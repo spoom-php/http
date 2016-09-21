@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project name="webengine-http" default="build" basedir=".">
+<project name="webengine-framework" default="build" basedir=".">
   <property file="${basedir}/build.properties"/>
   <echo message="Ignore directories: ${dir_ignore}"/>
   <echo message="Basedir: ${basedir}"/>

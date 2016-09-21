@@ -42,25 +42,6 @@ interface MessageInterface {
   public function setVersion( $value );
 
   /**
-   * Get a specific (or all) header value
-   *
-   * @param string $name Case-insensitive
-   *
-   * @return array|array[string]
-   */
-  public function getHeader( $name = null );
-  /**
-   * Set (or extend) a specific or all header
-   *
-   * @param mixed       $value
-   * @param string|null $name   Case-insensitive
-   * @param bool        $append Extend or set the value(s)
-   *
-   * @return static
-   */
-  public function setHeader( $value, $name = null, $append = false );
-
-  /**
    * Get the message's body
    *
    * @return StreamInterface|null
@@ -74,6 +55,25 @@ interface MessageInterface {
    * @return static
    */
   public function setBody( $value );
+
+  /**
+   * Get a specific (or all) header value
+   *
+   * @param string $name Case-insensitive
+   *
+   * @return array|string|null
+   */
+  public function getHeader( $name = null );
+  /**
+   * Set (or extend) a specific or all header. A field can be removed with null value
+   *
+   * @param mixed       $value
+   * @param string|null $name   Case-insensitive
+   * @param bool        $append Extend or set the value(s)
+   *
+   * @return static
+   */
+  public function setHeader( $value, $name = null, $append = false );
 }
 /**
  * Class Message
@@ -94,6 +94,8 @@ abstract class Message extends Library implements MessageInterface {
   private $_body;
 
   /**
+   * Header storage. The key is the header field name, the value is the field string (or an array of string) data
+   *
    * @var array[string]
    */
   private $_header = [];
@@ -155,15 +157,15 @@ abstract class Message extends Library implements MessageInterface {
    *
    * @param string $name Case-insensitive
    *
-   * @return array|array[string]
+   * @return array|string|null
    */
   public function getHeader( $name = null ) {
 
     $name = mb_strtolower( $name );
-    return empty( $name ) ? $this->_header : ( isset( $this->_header[ $name ] ) ? $this->_header[ $name ] : [] );
+    return empty( $name ) ? $this->_header : ( isset( $this->_header[ $name ] ) ? $this->_header[ $name ] : null );
   }
   /**
-   * Set (or extend) a specific or all header
+   * Set (or extend) a specific or all header. A field can be removed with null value
    *
    * @param mixed       $value
    * @param string|null $name   Case-insensitive
@@ -173,23 +175,43 @@ abstract class Message extends Library implements MessageInterface {
    */
   public function setHeader( $value, $name = null, $append = false ) {
 
-    // force value to array
-    if( empty( $value ) ) $value = [];
-    else $value = (array) $value;
-
-    // create the header if empty
-    $name = mb_strtolower( $name );
-    if( !empty( $name ) && !isset( $this->_header[ $name ] ) ) {
-      $this->_header[ $name ] = [];
-    }
-
-    $tmp = &( empty( $name ) ? $this->_header : $this->_header[ $name ] );
-    if( $append ) $tmp = array_merge( $tmp, $value );
+    if( $name !== null ) return $this->setHeaderField( $name, $value, $append );
     else {
 
-      // TODO implement true remove
+      // clear the current headers of not an append
+      if( !$append ) {
+        $this->_header = [];
+      }
 
-      $tmp = $value;
+      foreach( $value as $i => $v ) {
+        $this->setHeaderField( $i, $v, false );
+      }
+    }
+
+    return $this;
+  }
+  /**
+   * Set (or extend) directly a header field
+   *
+   * @param string               $name   The header field's name
+   * @param string|string[]|null $value  The header value, or null to remove
+   * @param bool                 $append Extend or set the value
+   *
+   * @return static
+   */
+  public function setHeaderField( $name, $value = null, $append = false ) {
+
+    $name = mb_strtolower( $name );
+    if( $value === null ) unset( $this->_header[ $name ] );
+    else if( !$append || !isset( $this->_header[ $name ] ) ) $this->_header[ $name ] = $value;
+    else {
+
+      // convert the field storage into an array
+      if( !is_array( $this->_header[ $name ] ) ) {
+        $this->_header[ $name ] = [ $this->_header[ $name ] ];
+      }
+
+      $this->_header[ $name ] = array_merge( $this->_header[ $name ], is_array( $value ) ? $value : [ $value ] );
     }
 
     return $this;

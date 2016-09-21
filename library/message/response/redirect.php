@@ -1,11 +1,11 @@
-<?php namespace Http\Response;
+<?php namespace Http\Message\Response;
 
 use Http\Helper\Uri;
 use Http\Message;
 
 /**
  * Class Redirect
- * @package Http\Response
+ * @package Http\Message\Response
  */
 class Redirect extends Message\Response {
 

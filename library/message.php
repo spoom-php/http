@@ -161,7 +161,14 @@ abstract class Message extends Library implements MessageInterface {
    */
   public function getHeader( $name = null ) {
 
-    $name = mb_strtolower( $name );
+    // find the name (non-casesensitive) in the header
+    if( $name ) foreach( $this->_header as $tmp => $_ ) {
+      if( mb_strtolower( $name ) == mb_strtolower( $tmp ) ) {
+        $name = $tmp;
+        break;
+      }
+    }
+
     return empty( $name ) ? $this->_header : ( isset( $this->_header[ $name ] ) ? $this->_header[ $name ] : null );
   }
   /**
@@ -201,17 +208,30 @@ abstract class Message extends Library implements MessageInterface {
    */
   public function setHeaderField( $name, $value = null, $append = false ) {
 
-    $name = mb_strtolower( $name );
-    if( $value === null ) unset( $this->_header[ $name ] );
-    else if( !$append || !isset( $this->_header[ $name ] ) ) $this->_header[ $name ] = $value;
+    // find the name (non-casesensitive) in the header
+    $name_old = $name;
+    foreach( $this->_header as $tmp => $_ ) {
+      if( mb_strtolower( $name ) == mb_strtolower( $tmp ) ) {
+        $name_old = $tmp;
+        break;
+      }
+    }
+
+    if( $value === null ) unset( $this->_header[ $name_old ] );
     else {
 
-      // convert the field storage into an array
-      if( !is_array( $this->_header[ $name ] ) ) {
-        $this->_header[ $name ] = [ $this->_header[ $name ] ];
-      }
+      // remove the old value to change the name later (if it's a set)
+      $tmp = isset( $this->_header[ $name_old ] ) ? $this->_header[ $name_old ] : null;
+      unset( $this->_header[ $name_old ] );
 
-      $this->_header[ $name ] = array_merge( $this->_header[ $name ], is_array( $value ) ? $value : [ $value ] );
+      // simple set
+      if( !$append || !isset( $tmp ) ) $this->_header[ $name ] = $value;
+      else {
+
+        // convert the field storage into an array
+        if( !is_array( $tmp ) ) $tmp = [ $tmp ];
+        $this->_header[ $name_old ] = array_merge( $tmp, is_array( $value ) ? $value : [ $value ] );
+      }
     }
 
     return $this;

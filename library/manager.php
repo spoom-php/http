@@ -10,8 +10,8 @@ use Http\Message;
  * @package Http
  *
  * @property-read string                         $id
- * @property-read      Input|null                $input
- * @property-read      UriInterface|null         $uri
+ * @property-read Input|null                     $input
+ * @property-read UriInterface|null              $uri
  * @property      Message\RequestInterface|null  $request
  * @property      Message\ResponseInterface|null $response
  */
@@ -23,14 +23,14 @@ class Manager extends Library {
   protected static $instance;
 
   /**
-   * Unique identifier of the request
+   * Random identifier of the manager
    *
    * @var string
    */
   private $_id;
 
   /**
-   * Base url for the request. This should be an absolute uri for the \Framework::PATH_BASE
+   * Base uri for the request. This should be an absolute uri for the \Framework::PATH_BASE
    *
    * @var UriInterface
    */
@@ -57,6 +57,8 @@ class Manager extends Library {
   }
 
   /**
+   * Random identifier of the manager
+   *
    * @return string
    */
   public function getId() {
@@ -64,6 +66,8 @@ class Manager extends Library {
   }
 
   /**
+   * Base uri for the request. This should be an absolute uri for the \Framework::PATH_BASE
+   *
    * @return UriInterface
    */
   public function getUri() {
@@ -84,7 +88,7 @@ class Manager extends Library {
   }
   /**
    * @param Message\RequestInterface $value
-   * @param Helper\UriInterface|null $uri The request's base uri
+   * @param UriInterface|null        $uri The request's base uri
    *
    * @return $this
    */
@@ -92,7 +96,7 @@ class Manager extends Library {
 
     $this->_request = $value;
     $this->_uri     = $uri ?: $this->_request->getUri();
-    $this->_input   = Input::instance( $this->_request );
+    $this->_input   = Input::instance( $this->_request, true );
 
     return $this;
   }

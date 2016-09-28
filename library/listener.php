@@ -75,9 +75,7 @@ class Listener implements FeasibleInterface {
 
     try {
 
-      /** @var Manager $manager */
       $manager = Manager::instance();
-
       if( !$manager->getRequest() ) {
 
         // build the request uri
@@ -85,8 +83,7 @@ class Listener implements FeasibleInterface {
         $scheme = $this->storage->getString( 'REQUEST_SCHEME', $secure ? Helper\UriInterface::SCHEME_HTTPS : Helper\UriInterface::SCHEME_HTTP );
 
         $tmp = $this->storage->getString( 'HTTP_X_FORWARDED_HOST', $this->storage->getString( 'HTTP_HOST', $this->storage->getString( 'SERVER_NAME' ) ) );
-        @list( $host, $tmp ) = explode( ':', $tmp );
-
+        list( $host, $tmp ) = strpos( ':', $tmp ) === false ? [ $tmp, 0 ] : explode( ':', $tmp );
         $port = !empty( $tmp ) ? (int) $tmp : $this->storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
 
         // create the request
@@ -95,7 +92,7 @@ class Listener implements FeasibleInterface {
         // set the request body and method
         $request->setBody( Stream::instance( fopen( 'php://input', 'r' ) ) );
         $request->setMethod( mb_strtolower( $this->storage->getString( 'REQUEST_METHOD', Message\Request::METHOD_GET ) ) );
-        $request->setVersion( $this->storage->getString( 'SERVER_PROTOCOL', 'HTTP1/1' ) ); // FIXME extract to const and decide the 'HTTP' part's fate
+        $request->setVersion( $this->storage->getString( 'SERVER_PROTOCOL', MessageInterface::VERSION_HTTP1_1 ) );
 
         // set headers
         $request->setHeader( $this->storage->getString( 'CONTENT_TYPE' ), 'content-type' );
@@ -156,8 +153,8 @@ class Listener implements FeasibleInterface {
     $manager = Manager::instance();
     if( !$manager->getResponse() ) try {
 
-      // log: info
-      $this->extension->log->info( 'HTTP response is not defined, blank response is used' );
+      // log: debug
+      $this->extension->log->debug( 'HTTP response is not defined, blank response is used' );
 
       // setup the default response
       $response = new Message\Response();
@@ -199,7 +196,7 @@ class Listener implements FeasibleInterface {
 
         $tmp = $response->getHeader( $name );
         if( empty( $tmp ) ) {
-          $response->setHeader( $value, $name );
+          $response->setHeader( ltrim( $value ), $name );
         }
       }
 
@@ -213,7 +210,7 @@ class Listener implements FeasibleInterface {
 
         $value = is_array( $value ) ? $value : [ $value ];
         foreach( $value as $data ) {
-          header( ucwords( $name ) . ": {$data}" );
+          header( $name . ": {$data}" );
         }
       }
 

@@ -19,19 +19,20 @@ class HttpMessageTest extends PHPUnit_Framework_TestCase {
     $this->assertNull( $message->setBody( null )->getBody() );
 
     // check basic header manipulations
-    $header = [ 'content-type' => 'text/plain', 'length' => 0 ];
+    $header = [ 'Content-Type' => 'text/plain', 'length' => 0 ];
     $message->setHeader( $header );
     $this->assertEquals( $header, $message->getHeader() );
 
     $message->setHeader( gmdate( Message::DATE_FORMAT ), 'Expires' );
     $this->assertEquals( gmdate( Message::DATE_FORMAT ), $message->getHeader( 'expires' ) );
-    $this->assertEquals( $header + [ 'expires' => gmdate( Message::DATE_FORMAT ) ], $message->getHeader() );
+    $this->assertEquals( $header + [ 'Expires' => gmdate( Message::DATE_FORMAT ) ], $message->getHeader() );
 
     $message->setHeader( null, 'expires' );
     $this->assertEquals( $header, $message->getHeader() );
 
-    $message->setHeader( 'text/html', 'accept' )
-            ->setHeader( [ 'text/plain', 'text/json' ], 'Accept', true );
+    $message->setHeader( 'text/html', 'Accept' )
+            ->setHeader( [ 'text/plain', 'text/json' ], 'accept', true );
+    $this->assertTrue( isset( $message->getHeader()[ 'Accept' ] ) );
     $this->assertEquals( [ 'text/html', 'text/plain', 'text/json' ], $message->getHeader( 'accept' ) );
     $message->setHeader( 'text/json', 'accept' );
     $this->assertEquals( 'text/json', $message->getHeader( 'accept' ) );

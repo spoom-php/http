@@ -50,7 +50,7 @@ class Multipart extends Library {
   /**
    * The input stream
    *
-   * @var resource
+   * @var StreamInterface
    */
   private $stream;
 
@@ -65,13 +65,13 @@ class Multipart extends Library {
    *
    * FIXME better specification support (http://www.w3.org/Protocols/rfc1341/7_2_Multipart.html) with more abstraction
    *
-   * @param $input
+   * @param StreamInterface|resource $input
    *
    * @throws Exception
    */
   public function __construct( $input ) {
 
-    $this->stream = $input;
+    $this->stream = Stream::instance( $input );
     $this->_data  = [];
 
     $buffer = '';
@@ -107,7 +107,7 @@ class Multipart extends Library {
       if( $last == self::SEPARATOR_END ) break;
 
       // check for invalid multipart message
-      if( $buffer == '' && feof( $this->stream ) ) {
+      if( $buffer == '' && feof( $this->stream->getResource() ) ) {
         throw new Exception\System( self::EXCEPTION_MISSING_END );
       }
     }
@@ -158,7 +158,7 @@ class Multipart extends Library {
     // read until the stop string
     while( ( $position = strpos( $buffer, $stop ) ) === false ) {
 
-      $tmp = fread( $this->stream, $stop_size > self::CHUNK ? $stop_size : self::CHUNK );
+      $tmp = $this->stream->read( $stop_size > self::CHUNK ? $stop_size : self::CHUNK );
       if( !$tmp ) break;
       else {
 

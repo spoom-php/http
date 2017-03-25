@@ -36,7 +36,7 @@ interface StreamInterface extends \Countable {
    * @return string
    * @throws Exception\Strict
    */
-  public function read( $length, $offset = null, $stream = null );
+  public function read( $length = 0, $offset = null, $stream = null );
 
   /**
    * Move the internal cursor within the stream
@@ -121,7 +121,7 @@ class Stream extends Library implements StreamInterface {
    * @inheritDoc
    */
   function __toString() {
-    return $this->isReadable() ? $this->read( $this->count() ) : "";
+    return $this->isReadable() ? $this->read() : "";
   }
 
   /**
@@ -160,21 +160,22 @@ class Stream extends Library implements StreamInterface {
    * @return string
    * @throws Exception\Strict
    */
-  public function read( $length, $offset = null, $stream = null ) {
+  public function read( $length = 0, $offset = null, $stream = null ) {
     if( !$this->isReadable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_OPERATION, [ 'meta' => $this->getMeta() ] );
     else {
 
       // seek to a position if given
+      $length = $length ?: (int) $this->count();
       if( $offset !== null ) {
         $this->seek( $offset );
       }
 
       // read the content
-      if( !$stream ) return fread( $this->_resource, $length );
+      if( !$stream ) return stream_get_contents( $this->_resource, $length > 0 ? $length : null );
       else if( !( $stream instanceof StreamInterface ) || !$stream->isWritable() ) throw new Exception\Strict( static::EXCEPTION_INVALID_STREAM, [ 'value' => $stream ] );
       else {
 
-        stream_copy_to_stream( $this->_resource, $stream->getResource(), $length );
+        stream_copy_to_stream( $this->_resource, $stream->getResource(), $length > 0 ? $length : null );
         return null;
       }
     }
@@ -254,8 +255,7 @@ class Stream extends Library implements StreamInterface {
    * @return boolean
    */
   public function isReadable() {
-    $tmp = $this->getMeta( 'mode' );
-    return $tmp && preg_match( '/(r\+?|w\+|a\+|x\+)/i', $tmp );
+    return true;
   }
   /**
    * Seek the stream is allowed

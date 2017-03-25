@@ -201,13 +201,14 @@ class Request extends Message implements RequestInterface {
   public function getCookie( $name = null ) {
 
     $cookie = [];
-    $header = explode( ';', implode( ';', $this->getHeader( 'cookie' ) ) );
+    $tmp    = $this->getHeader( 'cookie' );
+    $header = explode( ';', implode( ';', is_array( $tmp ) ? $tmp : [ $tmp ] ) );
     foreach( $header as $h ) {
 
       list( $tmp, $value ) = explode( '=', ltrim( $h ), 2 );
-      $cookie[ $tmp ] = $value;
 
-      if( $tmp == $name ) return $tmp;
+      if( empty( $name ) ) $cookie[ $tmp ] = $value;
+      else if( $name == $tmp ) return $value;
     }
 
     return $name === null ? $cookie : null;

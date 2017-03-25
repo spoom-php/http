@@ -291,8 +291,10 @@ class Response extends Message implements ResponseInterface {
   /**
    * Set, remove (or edit) a cookie(s) for the response
    *
+   * note: To set a "remove" cookie use it like ->setCookie( '..', 1, 1 )
+   *
    * @param string     $name
-   * @param mixed|null $value  The (new) value, or null for "remove"
+   * @param mixed|null $value  The (new) value, or null for remove
    * @param string|int $expire The (new) expire time in s or datetime string
    * @param array      $option Other options for the cookie (path, domain, ..)
    *
@@ -300,31 +302,33 @@ class Response extends Message implements ResponseInterface {
    */
   public function setCookie( $name, $value = null, $expire = 0, $option = [] ) {
 
-    // remove implementation
-    if( $value === null ) {
-      $expire = $value = 1;
-    }
-
     // search and remove the previous cookie
     $header_list = $this->getHeader( 'set-cookie' );
+    $header_list = is_array( $header_list ) ? $header_list : ( empty( $header_list ) ? [] : [ $header_list ] );
     foreach( $header_list as $i => $header ) {
 
-      list( $tmp, $value ) = explode( '=', ltrim( explode( ';', trim( $header ), 2 )[ 0 ] ), 2 );
+      list( $tmp ) = explode( '=', ltrim( explode( ';', trim( $header ), 2 )[ 0 ] ), 2 );
       if( $tmp == $name ) unset( $header_list[ $i ] );
     }
 
-    // create the cookie's data than build it
-    $cookie = [ $name => $value === null ? '' : $value ] + $option;
-    if( !empty( $expire ) ) $cookie[ 'expires' ] = gmdate( MessageInterface::DATE_FORMAT, is_numeric( $expire ) ? $expire : strtotime( $expire ) );
+    $header_list = array_values( $header_list );
+    if( $value !== null ) {
+      // create the cookie's data than build it
+      $cookie = [ $name => $value === null ? '' : $value ] + $option;
+      if( !empty( $expire ) ) $cookie[ 'expires' ] = gmdate( MessageInterface::DATE_FORMAT, is_numeric( $expire ) ? $expire : strtotime( $expire ) );
 
-    $string = '';
-    foreach( $cookie as $key => $data ) {
+      $string = '';
+      foreach( $cookie as $key => $data ) {
 
-      $string .= ( empty( $string ) ? '' : '; ' );
-      $string .= $key . ( $data === true ? '' : ( '=' . $value ) );
+        $string .= ( empty( $string ) ? '' : '; ' );
+        $string .= $key . ( $data === true ? '' : ( '=' . $data ) );
+      }
+
+      $header_list[] = $string;
     }
 
-    $header_list[] = $string;
+    // change the header field
+    $this->setHeader( count( $header_list ) > 1 ? $header_list : ( !empty( $header_list ) ? $header_list[ 0 ] : null ), 'set-cookie' );
     return $this;
   }
 }

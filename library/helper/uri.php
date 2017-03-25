@@ -81,7 +81,7 @@ interface UriInterface {
    * @return $this
    * @throws Exception\Strict
    */
-  public function merge( $uri, array $overwrite = [ ] );
+  public function merge( $uri, array $overwrite = [] );
 
   /**
    * @return string|null
@@ -172,7 +172,7 @@ interface UriInterface {
    *
    * @return array
    */
-  public function getComponent( array $filter = [ ] );
+  public function getComponent( array $filter = [] );
 }
 /**
  * Class Uri
@@ -257,7 +257,7 @@ class Uri extends Library implements UriInterface {
    * @param string|null           $path  The path of the URI
    * @param Uri|string|array|null $root  The root URI definition. The new instance will be extended with this URI
    */
-  public function __construct( $query = [ ], $path = null, $root = null ) {
+  public function __construct( $query = [], $path = null, $root = null ) {
 
     // define the simple components
     $this->query = $query;
@@ -331,12 +331,15 @@ class Uri extends Library implements UriInterface {
 
     // add double slash before the host (or the user)
     if( !isset( $component[ self::COMPONENT_USER ] ) ) $template[ self::COMPONENT_HOST ] = self::SEPARATOR_HOST . $template[ self::COMPONENT_HOST ];
-    else $template[ self::COMPONENT_USER ] = self::SEPARATOR_HOST . $template[ self::COMPONENT_USER ];
+    else {
 
-    // unset the password part
-    if( !isset( $component[ self::COMPONENT_PASSWORD ] ) ) {
-      $component[ self::COMPONENT_PASSWORD ] = '';
-      $template[ self::COMPONENT_USER ]      = rtrim( $template[ self::COMPONENT_USER ], self::SEPARATOR_PASSWORD );
+      $template[ self::COMPONENT_USER ] = self::SEPARATOR_HOST . $template[ self::COMPONENT_USER ];
+
+      // unset the password part
+      if( !isset( $component[ self::COMPONENT_PASSWORD ] ) ) {
+        $component[ self::COMPONENT_PASSWORD ] = '';
+        $template[ self::COMPONENT_USER ]      = rtrim( $template[ self::COMPONENT_USER ], self::SEPARATOR_PASSWORD );
+      }
     }
 
     // build the template string based on the exists components
@@ -361,7 +364,7 @@ class Uri extends Library implements UriInterface {
    * @return $this
    * @throws Exception\Strict
    */
-  public function merge( $uri, array $overwrite = [ ] ) {
+  public function merge( $uri, array $overwrite = [] ) {
 
     // parse the URI
     $uri = static::instance( $uri );
@@ -513,7 +516,7 @@ class Uri extends Library implements UriInterface {
     else if( !is_string( $value ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_QUERY );
     else {
 
-      $this->_component[ self::COMPONENT_QUERY ] = [ ];
+      $this->_component[ self::COMPONENT_QUERY ] = [];
       parse_str( $value, $this->_component[ self::COMPONENT_QUERY ] );
     }
 
@@ -543,12 +546,12 @@ class Uri extends Library implements UriInterface {
    *
    * @return array
    */
-  public function getComponent( array $filter = [ ] ) {
+  public function getComponent( array $filter = [] ) {
 
     if( empty( $filter ) ) return $this->_component;
     else {
 
-      $tmp = [ ];
+      $tmp = [];
       foreach( $filter as $key ) {
         if( isset( $this->_component[ $key ] ) ) {
           $tmp[ $key ] = $this->_component[ $key ];
@@ -577,12 +580,15 @@ class Uri extends Library implements UriInterface {
       if( !is_array( $components ) ) throw new Exception\Strict( self::EXCEPTION_INVALID_DEFINITION );
     }
 
+    // 
+    if( isset( $components[ 'pass' ] ) ) {
+      $components[ 'password' ] = $components[ 'pass' ];
+    }
+
     // setup the basic variables
     $uri       = new static();
     $translate = [
       'scheme'   => self::COMPONENT_SCHEME,
-      'pass'     => self::COMPONENT_PASSWORD,
-      'password' => self::COMPONENT_PASSWORD,
       'user'     => self::COMPONENT_USER,
       'host'     => self::COMPONENT_HOST,
       'port'     => self::COMPONENT_PORT,
@@ -592,8 +598,11 @@ class Uri extends Library implements UriInterface {
     ];
 
     // set components in the new Uri instance
-    foreach( $components as $name => $value ) {
-      $uri->{$translate[ $name ]} = $value;
+    foreach( $translate as $name => $property ) {
+      if( isset( $components[ $name ] ) ) {
+        if( $name == 'user' ) $uri->setUser( $components[ $name ], isset( $components[ 'password' ] ) ? $components[ 'password' ] : null );
+        else $uri->{$property} = $components[ $name ];
+      }
     }
 
     return $uri;

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="webengine-framework" default="build" basedir=".">
+  <property file="${basedir}/build.properties"/>
+  <echo message="Ignore directories: ${dir_ignore}"/>
+  <echo message="Basedir: ${basedir}"/>
+  <echo message="Source: ${source}"/>
+  <echo message="Dir exclude: ${dir_exclude}"/>
+
+  <target name="clean" description="Clean up">
+    <delete dir="${build_path}/api" failonerror="false"/>
+    <delete dir="${build_path}/code-browser" failonerror="false"/>
+    <delete dir="${build_path}/coverage" failonerror="false"/>
+    <delete dir="${build_path}/logs" failonerror="false"/>
+    <delete dir="${build_path}/pdepend" failonerror="false"/>
+  </target>
+
+  <target name="prepare" description="Create artifact directories">
+    <mkdir dir="${build_path}/api"/>
+    <mkdir dir="${build_path}/code-browser"/>
+    <mkdir dir="${build_path}/coverage"/>
+    <mkdir dir="${build_path}/logs"/>
+    <mkdir dir="${build_path}/pdepend"/>
+  </target>
+
+  <target name="publish" description="Publish results">
+    <exec executable="rm" failonerror="false">
+      <arg value="-R"/>
+      <arg value="${url_path}"/>
+    </exec>
+
+    <exec executable="ln" failonerror="true">
+      <arg value="-s"/>
+      <arg value="${build_path}"/>
+      <arg value="${url_path}"/>
+    </exec>
+  </target>
+  <!-- target name="phpunit"
+      description="Run unit tests using PHPUnit and generates junit.xml and clover.xml">
+      <exec executable="phpunit" failonerror="true"/>
+  </target -->
+
+  <target name="parallelTasks"
+          description="Run the pdepend, phpmd, phpcpd, phpcs, phpdoc and phploc tasks in parallel using a maximum of 2 threads.">
+    <parallel threadCount="2">
+      <sequential>
+        <antcall target="pdepend"/>
+        <antcall target="phpmd"/>
+      </sequential>
+      <antcall target="phpcpd"/>
+      <antcall target="phpcs"/>
+      <antcall target="phpdoc"/>
+      <antcall target="phploc"/>
+    </parallel>
+  </target>
+
+  <target name="pdepend" description="Generate jdepend.xml and software metrics charts using PHP_Depend">
+    <exec executable="pdepend">
+      <arg value="--jdepend-xml=${build_path}/logs/jdepend.xml"/>
+      <arg value="--jdepend-chart=${build_path}/pdepend/dependencies.svg"/>
+      <arg value="--overview-pyramid=${build_path}/pdepend/overview-pyramid.svg"/>
+      <!-- arg value="- -ignore=${dir_ignore}" / -->
+      <arg value="--suffix=php"/>
+      <arg path="${source}"/>
+    </exec>
+  </target>
+
+  <target name="phpmd" description="Generate pmd.xml using PHPMD">
+    <exec executable="phpmd">
+      <arg path="${source}"/>
+      <arg value="xml"/>
+      <arg value="${build_path}/phpmd.xml"/>
+      <arg value="--reportfile"/>
+      <arg value="${build_path}/logs/pmd.xml"/>
+      <arg value="--suffixes .php"/>
+
+      <!-- arg line="${dir_exclude}" / -->
+
+      <!-- phpmd . xml ./build/phpmd.xml - -reportfile ./build/logs/pmd.xml - -exclude core/extensions -->
+    </exec>
+  </target>
+
+  <target name="phpcpd" description="Generate pmd-cpd.xml using PHPCPD">
+    <exec executable="phpcpd">
+      <arg value="--log-pmd"/>
+      <arg value="${build_path}/logs/pmd-cpd.xml"/>
+      <arg line="${dir_exclude}"/>
+      <arg path="${source}"/>
+    </exec>
+  </target>
+
+  <target name="phploc" description="Generate phploc.csv">
+    <exec executable="phploc">
+      <arg value="--log-csv"/>
+      <arg value="${build_path}/logs/phploc.csv"/>
+      <arg value="--log-xml"/>
+      <arg value="${build_path}/logs/phploc.xml"/>
+      <arg line="${dir_exclude}"/>
+      <arg path="${source}"/>
+    </exec>
+  </target>
+
+  <target name="phpcs" description="Generate checkstyle.xml using PHP_CodeSniffer">
+    <!-- exec executable="phpcs" output="/dev/null" -->
+    <exec executable="phpcs" output="${build_path}/logs/phpcs.log">
+      <arg value="--report=checkstyle"/>
+      <arg value="--report-file=${build_path}/logs/checkstyle.xml"/>
+      <arg value="--standard=${build_path}/Webe"/>
+      <arg path="${source}"/>
+      <arg value="--ignore=${dir_ignore}"/>
+      <arg value="-v"/>
+    </exec>
+  </target>
+  <!-- phpcs - -report=checkstyle - -report-file=/var/lib/jenkins/workspace/MRShop/build/logs/checkstyle.xml - -standard=/var/lib/jenkins/workspace/MRShop/build/phpcs.xml /var/lib/jenkins/workspace/MRShop/ - -ignore=core/extensions/ -vv -->
+
+  <target name="phpdoc" description="Generate API documentation using PHPDocumentor">
+    <exec executable="phpdoc">
+      <arg value="--directory"/>
+      <arg path="${source}"/>
+      <arg value="--extensions=php"/>
+      <arg value="--target"/>
+      <arg path="${build_path}/api"/>
+      <arg value="--ignore"/>
+      <arg value="${dir_ignore}"/>
+    </exec>
+  </target>
+
+  <target name="phpdox" description="Generate API documentation using PHPDox">
+    <exec executable="phpdox" />
+  </target>
+
+  <target name="phpcb" description="Aggregate tool output with PHP_CodeBrowser">
+    <exec executable="phpcb">
+      <arg value="--log"/>
+      <arg path="${build_path}/logs"/>
+      <arg value="--source"/>
+      <arg path="${source}"/>
+      <arg value="--output"/>
+      <arg path="${build_path}/code-browser"/>
+      <arg value="--extensions=php"/>
+      <arg value="--ignore"/>
+      <arg value="${dir_ignore}"/>
+    </exec>
+  </target>
+
+  <!-- target name="build" depends="clean,parallelTasks,phpunit,phpcb"/ -->
+  <target name="build" depends="clean,prepare,parallelTasks,phpcb,phpdox,publish"/>
+
+  <!-- target name="build" depends="phpcb"/ -->
+  <!-- target name="build" depends="phpmd"/ -->
+  <!-- target name="build" depends="pdepend"/ -->
+  <!-- target name="build" depends="phpcs"/ -->
+  <!-- target name="build" depends="phpcs,phpcb"/ -->
+  <!-- target name="build" depends="phpcpd"/ -->
+
+</project>

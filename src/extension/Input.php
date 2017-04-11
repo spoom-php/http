@@ -1,15 +1,15 @@
 <?php namespace Spoom\Http;
 
 use Spoom\Framework\Storage;
-use Spoom\Framework\Helper\StreamInterface;
-use Spoom\Http\Helper\UriInterface;
 use Spoom\Framework;
+use Spoom\Http\Message\RequestInterface;
+use Spoom\Framework\Exception;
+use Spoom\Framework\Helper;
 
 /**
  * Class Input
  *
- * TODO add ability to override or extend converters without event
- * TODO construct from `Message\RequestInterface`
+ * TODO Add event for the processing
  *
  * @package Spoom\Http
  */
@@ -29,163 +29,72 @@ class Input extends Storage {
   const NAMESPACE_URI = 'uri';
 
   /**
-   * Preprocess the input before the construct
+   * @param RequestInterface $request
+   * @param array            $converters
    *
-   * @param static               $instance
-   * @param UriInterface         $uri
-   * @param StreamInterface|null $body
-   * @param string|null          $format
-   *
-   * @prevent Uri and body processing
+   * @throws InputExceptionBody Invalid or unknown body format
    */
-  const EVENT_CREATE = 'input.create';
-
-  /**
-   * @var Framework\ConverterInterface[]
-   */
-  private $_converter_map;
-
-  /**
-   * Parse input stream and uri into structural data
-   *
-   * @param UriInterface         $uri
-   * @param StreamInterface|null $body
-   * @param string|null          $format
-   */
-  public function __construct( $uri, $body = null, $format = null ) {
+  public function __construct( RequestInterface $request, array $converters = [] ) {
     parent::__construct( [], static::NAMESPACE_REQUEST );
 
-    $this->_converter_map = [
-      'application/json'                  => $tmp = new Framework\Converter\Json(),
-      'text/json'                         => $tmp,
-      'application/xml'                   => $tmp = new Framework\Converter\Xml(),
-      'text/xml'                          => $tmp,
-      'multipart/form-data'               => new Converter\Multipart(),
-      'application/x-www-form-urlencoded' => new Converter\Query()
-    ];
+    // set "public" and "private" data
+    $this[ self::NAMESPACE_URI . ':' ] = $request->getUri()->getQuery();
+    if( $request->getBody() ) {
 
-    // trigger the process event
-    $extension = Extension::instance();
-    $event     = $extension->trigger( self::EVENT_CREATE, [
-      'instance' => $this,
-      'uri'      => $uri,
-      'body'     => $body,
-      'format'   => $format
-    ] );
+      // define body's format
+      $format = $request->getHeader( 'content-type' );
+      list( $format ) = explode( ';', is_array( $format ) ? implode( ';', $format ) : $format );
 
-    if( !$event->isPrevented() ) {
+      // collect available converters
+      $map                = [ 'multipart/form-data' => new Converter\Multipart(), 'application/x-www-form-urlencoded' => new Converter\Query() ];
+      $map[ 'text/json' ] = $map[ 'application/json' ] = new Framework\Converter\Json();
+      $map[ 'text/xml' ]  = $map[ 'application/xml' ] = new Framework\Converter\Xml();
+      $map                = $converters + $map;
 
-      // set "public" and "private" data
-      $this[ self::NAMESPACE_URI . ':' ]  = $uri->getQuery();
-      $this[ self::NAMESPACE_BODY . ':' ] = $this->process( $body, $format );
+      // process the body
+      $converter = $map[ $format ] ?? null;
+      if( empty( $converter ) ) throw new InputExceptionBody( $format, array_keys( $map ) );
+      else {
+
+        $tmp = $converter->unserialize( $request->getBody() );
+        if( $converter->getException() ) throw new InputExceptionBody( $format, array_keys( $map ), $converter->getException() );
+        else $this[ self::NAMESPACE_BODY . ':' ] = $tmp;
+      }
     }
 
     // merge the "public" and "private" storages
-    $this[ self::NAMESPACE_REQUEST . ':' ] = static::merge( $this->getArray( self::NAMESPACE_URI . ':' ), $this->getArray( self::NAMESPACE_BODY . ':' ) );
+    $this[ self::NAMESPACE_REQUEST . ':' ] = Framework\Helper\Enumerable::merge(
+      $this->getArray( self::NAMESPACE_URI . ':' ),
+      $this->getArray( self::NAMESPACE_BODY . ':' )
+    );
   }
+}
+
+/**
+ * Unable to process the request's body
+ *
+ * @package Spoom\Http
+ */
+class InputExceptionBody extends Exception\Runtime {
+
+  const ID = '0#spoom-http'; // TODO define
 
   /**
-   * Process the body into the input's storage
-   *
-   * @param StreamInterface|null $body
-   * @param string|null          $format
-   *
-   * @return array
+   * @param string          $format Body format
+   * @param array           $allow  Available format converters
+   * @param \Throwable|null $throwable
    */
-  private function process( $body, $format ) {
+  public function __construct( string $format, array $allow = [], ?\Throwable $throwable = null ) {
 
-    if( !$body ) return [];
-    else {
+    $data    = [ 'format' => $format, 'allow' => implode( ',', $allow ) ];
+    $message = in_array( $format, $allow ) ? "HTTP request's body is in an unknown format ({format})" : "HTTP request's body can't be processed as '{format}'";
 
-      $converter = $this->_converter_map[ $format ];
-      if( empty( $converter ) ) throw new \RuntimeException(); // TODO exception
-      else {
-
-        $tmp = $converter->unserialize( $body );
-        if( $converter->getException() ) throw new \RuntimeException(); // TODO exception
-        else return $tmp;
-      }
-    }
-  }
-
-  /**
-   * Recursive merge of two arrays. This is like the array_merge_recursive() without the strange array-creating thing
-   *
-   * @param array $destination
-   * @param array $source
-   *
-   * @return array
-   */
-  private static function merge( array $destination, array $source ) {
-
-    $result = $destination;
-    foreach( $source as $key => &$value ) {
-      if( !is_array( $value ) || !isset ( $result[ $key ] ) || !is_array( $result[ $key ] ) ) $result[ $key ] = $value;
-      else $result[ $key ] = static::merge( $result[ $key ], $value );
-    }
-
-    return $result;
-  }
-  /**
-   * Populate an empty input from a request object
-   *
-   * @param Message\RequestInterface $request
-   * @param bool                     $native Add native PHP container values
-   *
-   * @return static
-   */
-  public static function instance( $request, $native = false ) {
-
-    $tmp = $request->getHeader( 'content-type' );
-    list( $tmp ) = explode( ';', is_array( $tmp ) ? implode( ';', $tmp ) : $tmp );
-    $instance = new static( $request->getUri(), $request->getBody(), $tmp );
-
-    // handle $_POST and $_FILES data
-    if( $native ) {
-
-      // preprocess native inputs
-      $data = empty( $_POST ) ? [] : $_POST;
-      if( !empty( $_FILES ) ) {
-
-        /**
-         * Recursive container filling helper (for the $_FILES processing)
-         *
-         * @param array  $container The container that will hold the value
-         * @param mixed  $value     The actual value
-         * @param string $name      The name of the property
-         */
-        function helper( &$container, &$value, $name ) {
-
-          if( !is_array( $value ) ) $container[ $name ] = $value;
-          else foreach( $value as $i => $v ) {
-
-            if( !isset( $container[ $i ] ) ) $container[ $i ] = [];
-            helper( $container[ $i ], $v, $name );
-          }
-        }
-
-        // walk the files
-        foreach( $_FILES as $index => $value ) {
-          if( !is_array( $value[ 'name' ] ) ) $data[ $index ] = $value;
-          else {
-
-            if( !is_array( $data[ $index ] ) ) $data[ $index ] = [];
-            foreach( $value as $property => $container ) {
-              helper( $data[ $index ], $container, $property );
-            }
-          }
-        }
-      }
-
-      // extend the instance body content
-      if( !empty( $data ) ) {
-
-        $data                                        = static::merge( $data, $instance->getArray( static::NAMESPACE_BODY . ':' ) );
-        $instance[ static::NAMESPACE_BODY . ':' ]    = $data;
-        $instance[ static::NAMESPACE_REQUEST . ':' ] = static::merge( $instance->getArray( static::NAMESPACE_URI . ':' ), $data );
-      }
-    }
-
-    return $instance;
+    parent::__construct(
+      Helper\Text::insert( $message, $data ),
+      static::ID,
+      $data,
+      $throwable,
+      Framework\Application::SEVERITY_NOTICE
+    );
   }
 }

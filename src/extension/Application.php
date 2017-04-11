@@ -8,29 +8,32 @@ use Spoom\Http\Helper\UriInterface;
 use Spoom\Framework\Helper\Stream;
 
 /**
- * Class Manager
+ * Class Application
  * @package Spoom\Http
- *
- * @property-read string                         $id
- * @property-read Input|null                     $input
- * @property-read UriInterface|null              $uri
- * @property      Message\RequestInterface|null  $request
- * @property      Message\ResponseInterface|null $response
  */
 class Application extends Framework\Application {
 
-  public function __invoke( ?callable $callback = null, ?Message\RequestInterface $request = null, ?UriInterface $base = null, ?Input $input = null ) {
+  /**
+   * Run the HTTP Application
+   *
+   * @param callable|null                 $callback
+   * @param Message\RequestInterface|null $request
+   * @param UriInterface|null             $uri
+   * @param Input|null                    $input
+   *
+   * @return Message\Response
+   */
+  public function __invoke( Message\RequestInterface $request, ?callable $callback = null, ?UriInterface $uri = null, ?Input $input = null ) {
 
     $extension = Http\Extension::instance();
     try {
 
       //
-      $request = $request ?? static::request();
-      $base    = $base ?? static::base( $request );
-      $input   = $input ?? Input::instance( $request, true );
+      $uri   = $uri ?? static::getUri( $request );
+      $input = $input ?? static::getInput( new Input( $request ) );
 
-      // log: debug
-      $extension->log->debug( 'HTTP request is started for ({id}) \'{method} {url}\'', [
+      //
+      $extension->log->debug( "HTTP request is started for ({id}) '{method} {url}'", [
         'method' => strtoupper( $request->getMethod() ),
         'url'    => (string) $request->getUri(),
         'id'     => $this->id,
@@ -38,24 +41,26 @@ class Application extends Framework\Application {
       ] );
 
       // run callback script that handle the main logic and provides the response
-      $response = $callback ? $callback( $input, $request, $base ) : new Message\Response( Message\ResponseInterface::STATUS_CONTENT_EMPTY );
+      $response = $callback ? $callback( $input, $request, $uri ) : new Message\Response( Message\ResponseInterface::STATUS_CONTENT_EMPTY );
       if( !( $response instanceof Message\ResponseInterface ) ) {
         throw new \TypeError( 'HTTP result must be an instance of ' . Message\ResponseInterface::class );
       }
 
     } catch( \Throwable $e ) {
 
-      // TODO log the exception
+      //
+      Framework\Exception::log( $e, Http\Extension::instance()->log );
 
+      // set status message accordingly to the exception's type
       $response = new Message\Response();
-
-      // TODO set status message accordingly to the exception's type
+      $response->setStatus( $e instanceof Framework\Exception ? Http\Message\ResponseInterface::STATUS_BAD : Http\Message\ResponseInterface::STATUS_INTERNAL );
     }
 
-    $extension->log->debug( 'HTTP response for the ({id}) \'{method} {url}\' request is \'{reason}\' ({status})', [
-      'method' => $request ? strtoupper( $request->getMethod() ) : null,
-      'url'    => $request ? (string) $request->getUri() : null,
-      'id'     => $request ? $this->getId() : null,
+    //
+    $extension->log->debug( "HTTP response for the ({id}) '{method} {url}' request is '{reason}' ({status})", [
+      'method' => strtoupper( $request->getMethod() ),
+      'url'    => (string) $request->getUri(),
+      'id'     => $this->getId(),
 
       'status' => $response->getStatus(),
       'reason' => $response->getReason(),
@@ -65,16 +70,25 @@ class Application extends Framework\Application {
     return $response;
   }
 
-  public static function request() {
+  /**
+   * Get default request
+   *
+   * Constructed from the PHP globals
+   *
+   * @return Message\Request
+   */
+  public static function getRequest() {
     $storage = new Storage( $_SERVER );
 
     // build the request uri
-    $secure = $storage->getString( 'HTTPS', 'off' ) != 'off' || $storage->getString( 'HTTP_X_FORWARDED_PROTO' ) == 'https';
+    $secure = $storage->getString( 'HTTPS', 'off' ) != 'off' || $storage->getString( 'HTTP_X_FORWARDED_PROTO' ) == Helper\UriInterface::SCHEME_HTTPS;
     $scheme = $storage->getString( 'REQUEST_SCHEME', $secure ? Helper\UriInterface::SCHEME_HTTPS : Helper\UriInterface::SCHEME_HTTP );
 
     $tmp = $storage->getString( 'HTTP_X_FORWARDED_HOST', $storage->getString( 'HTTP_HOST', $storage->getString( 'SERVER_NAME' ) ) );
     list( $host, $tmp ) = strpos( ':', $tmp ) === false ? [ $tmp, 0 ] : explode( ':', $tmp );
-    $port = !empty( $tmp ) ? (int) $tmp : $storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
+    if( !empty( $tmp ) ) $port = (int) $tmp;
+    else if( isset( $storage[ 'HTTP_X_FORWARDED_HOST' ] ) ) $port = $storage->getString( 'HTTP_X_FORWARDED_PROTO' ) == Helper\UriInterface::SCHEME_HTTPS ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS;
+    else $port = $storage->getNumber( 'SERVER_PORT', $secure ? Helper\UriInterface::PORT_HTTP : Helper\UriInterface::PORT_HTTPS );
 
     // create the request
     $request = new Message\Request( "{$scheme}://{$host}:{$port}" . $storage->getString( 'REQUEST_URI' ) );
@@ -96,11 +110,22 @@ class Application extends Framework\Application {
 
     return $request;
   }
-  public static function base( Message\RequestInterface $request ) {
+  /**
+   * Get default base Uri
+   *
+   * Constructed from the request's uri and PHP globals
+   *
+   * @param Message\RequestInterface $request
+   *
+   * @return UriInterface
+   */
+  public static function getUri( Message\RequestInterface $request ) {
 
     // define the uri base from the request uri
     $uri = Uri::instance( $request->getUri()->getComponent( [
       Helper\UriInterface::COMPONENT_SCHEME,
+      Helper\UriInterface::COMPONENT_USER,
+      Helper\UriInterface::COMPONENT_PASSWORD,
       Helper\UriInterface::COMPONENT_HOST,
       Helper\UriInterface::COMPONENT_PORT
     ] ) );
@@ -110,10 +135,72 @@ class Application extends Framework\Application {
 
     return $uri;
   }
-  public static function response( Message\ResponseInterface $response ) {
+  /**
+   * Extend input with PHP defaults
+   *
+   * Input::NAMESPACE_BODY will be extended with $_POST and normalized $_FILES
+   *
+   * @param Input $input
+   */
+  public static function getInput( Input $input ) {
 
-    // send the manager's response to the "output"
-    if( headers_sent() ) ; // TODO log this as a warning
+    // preprocess native inputs
+    $data = empty( $_POST ) ? [] : $_POST;
+    if( !empty( $_FILES ) ) {
+
+      /**
+       * Recursive container filling helper (for the $_FILES processing)
+       *
+       * @param array  $container The container that will hold the value
+       * @param mixed  $value     The actual value
+       * @param string $name      The name of the property
+       */
+      function helper( &$container, &$value, $name ) {
+
+        if( !is_array( $value ) ) $container[ $name ] = $value;
+        else foreach( $value as $i => $v ) {
+
+          if( !isset( $container[ $i ] ) ) $container[ $i ] = [];
+          helper( $container[ $i ], $v, $name );
+        }
+      }
+
+      // walk the files
+      foreach( $_FILES as $index => $value ) {
+        if( !is_array( $value[ 'name' ] ) ) $data[ $index ] = $value;
+        else {
+
+          if( !is_array( $data[ $index ] ) ) $data[ $index ] = [];
+          foreach( $value as $property => $container ) {
+            helper( $data[ $index ], $container, $property );
+          }
+        }
+      }
+    }
+
+    // 
+    if( !empty( $data ) ) {
+
+      $instance[ Input::NAMESPACE_BODY . ':' ]    = Framework\Helper\Enumerable::merge( $data, $input->getArray( Input::NAMESPACE_BODY . ':' ) );
+      $instance[ Input::NAMESPACE_REQUEST . ':' ] = Framework\Helper\Enumerable::merge(
+        $input->getArray( Input::NAMESPACE_URI . ':' ),
+        $input->getArray( Input::NAMESPACE_BODY . ':' )
+      );
+    }
+  }
+
+  /**
+   * Send response for the PHP request
+   *
+   * This will setup headers and write the response body to the default PHP output
+   *
+   * @param Message\ResponseInterface $response
+   * @param Message\RequestInterface  $request
+   */
+  public static function response( Message\ResponseInterface $response, Message\RequestInterface $request ) {
+
+    // setup headers from the response
+    if( headers_sent() ) Http\Extension::instance()->log->warning( 'HTTP headers already sent', [ 'response' => $response, 'request' => $request ] );
     else {
 
       // 

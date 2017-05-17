@@ -1,7 +1,7 @@
 <?php namespace Spoom\Http\Message\Response;
 
-use Spoom\Framework\FileInterface;
-use Spoom\Framework\Helper\StreamInterface;
+use Spoom\Core\FileInterface;
+use Spoom\Core\Helper\StreamInterface;
 use Spoom\Http\Message;
 
 /**
@@ -36,8 +36,8 @@ class File extends Message\Response {
   /**
    * @inheritDoc
    */
-  public function __construct( int $status = self::STATUS_OK, array $header = [], ?StreamInterface $body = null ) {
-    parent::__construct( $status, $header + [ 'binary' => 'content-transfer-encoding' ], $body );
+  public function __construct( ?StreamInterface $body = null, int $status = self::STATUS_OK, array $header = [] ) {
+    parent::__construct( $body, $status, $header + [ 'binary' => 'content-transfer-encoding' ] );
   }
 
   /**

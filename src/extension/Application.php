@@ -1,17 +1,17 @@
 <?php namespace Spoom\Http;
 
-use Spoom\Framework;
+use Spoom\Core;
 use Spoom\Http;
-use Spoom\Framework\Storage;
+use Spoom\Core\Storage;
 use Spoom\Http\Helper\Uri;
 use Spoom\Http\Helper\UriInterface;
-use Spoom\Framework\Helper\Stream;
+use Spoom\Core\Helper\Stream;
 
 /**
  * Class Application
  * @package Spoom\Http
  */
-class Application extends Framework\Application {
+class Application extends Core\Application {
 
   /**
    * Run the HTTP Application
@@ -41,7 +41,7 @@ class Application extends Framework\Application {
       ] );
 
       // run callback script that handle the main logic and provides the response
-      $response = $callback ? $callback( $input, $request, $uri ) : new Message\Response( Message\ResponseInterface::STATUS_CONTENT_EMPTY );
+      $response = $callback ? $callback( $input, $request, $uri ) : new Message\Response( null, Message\ResponseInterface::STATUS_CONTENT_EMPTY );
       if( !( $response instanceof Message\ResponseInterface ) ) {
         throw new \TypeError( 'HTTP result must be an instance of ' . Message\ResponseInterface::class );
       }
@@ -49,11 +49,13 @@ class Application extends Framework\Application {
     } catch( \Throwable $e ) {
 
       //
-      Framework\Exception::log( $e, Http\Extension::instance()->log );
+      Core\Exception::log( $e, Http\Extension::instance()->log );
 
       // set status message accordingly to the exception's type
-      $response = new Message\Response();
-      $response->setStatus( $e instanceof Framework\Exception ? Http\Message\ResponseInterface::STATUS_BAD : Http\Message\ResponseInterface::STATUS_INTERNAL );
+      if( $e instanceof Http\Exception ) $status = $e->getStatus();
+      else $status = $e instanceof Core\Exception ? Http\Message\ResponseInterface::STATUS_BAD : Http\Message\ResponseInterface::STATUS_INTERNAL;
+
+      $response = new Message\Response( null, $status );
     }
 
     //
@@ -94,7 +96,7 @@ class Application extends Framework\Application {
     $request = new Message\Request( "{$scheme}://{$host}:{$port}" . $storage->getString( 'REQUEST_URI' ) );
 
     // set the request body and method
-    $request->setBody( new Stream( 'php://input', Stream::MODE_READ ) );
+    if( $storage->getNumber( 'CONTENT_LENGTH' ) > 0 ) $request->setBody( new Stream( 'php://input', Stream::MODE_READ ) );
     $request->setMethod( mb_strtolower( $storage->getString( 'REQUEST_METHOD', Message\Request::METHOD_GET ) ) );
     $request->setVersion( $storage->getString( 'SERVER_PROTOCOL', MessageInterface::VERSION_HTTP1_1 ) );
 
@@ -157,7 +159,7 @@ class Application extends Framework\Application {
        */
       function helper( &$container, &$value, $name ) {
 
-        if( !is_array( $value ) ) $container[ $name ] = $value;
+        if( !is_array( $value ) ) $container[ $name ] = empty( $value[ 'error' ] ) ? new Stream( $value[ 'tmp_name' ], Stream::MODE_RW ) : null;
         else foreach( $value as $i => $v ) {
 
           if( !isset( $container[ $i ] ) ) $container[ $i ] = [];
@@ -167,7 +169,7 @@ class Application extends Framework\Application {
 
       // walk the files
       foreach( $_FILES as $index => $value ) {
-        if( !is_array( $value[ 'name' ] ) ) $data[ $index ] = $value;
+        if( !is_array( $value[ 'name' ] ) ) $data[ $index ] = empty( $value[ 'error' ] ) ? new Stream( $value[ 'tmp_name' ], Stream::MODE_RW ) : null;
         else {
 
           if( !is_array( $data[ $index ] ) ) $data[ $index ] = [];
@@ -181,8 +183,8 @@ class Application extends Framework\Application {
     // 
     if( !empty( $data ) ) {
 
-      $instance[ Input::NAMESPACE_BODY . ':' ]    = Framework\Helper\Enumerable::merge( $data, $input->getArray( Input::NAMESPACE_BODY . ':' ) );
-      $instance[ Input::NAMESPACE_REQUEST . ':' ] = Framework\Helper\Enumerable::merge(
+      $instance[ Input::NAMESPACE_BODY . ':' ]    = Core\Helper\Collection::merge( $data, $input->getArray( Input::NAMESPACE_BODY . ':' ) );
+      $instance[ Input::NAMESPACE_REQUEST . ':' ] = Core\Helper\Collection::merge(
         $input->getArray( Input::NAMESPACE_URI . ':' ),
         $input->getArray( Input::NAMESPACE_BODY . ':' )
       );

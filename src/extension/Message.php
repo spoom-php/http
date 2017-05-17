@@ -1,8 +1,8 @@
 <?php namespace Spoom\Http;
 
-use Spoom\Framework\Helper;
-use Spoom\Framework\Helper\AccessableInterface;
-use Spoom\Framework\Helper\StreamInterface;
+use Spoom\Core\Helper;
+use Spoom\Core\Helper\AccessableInterface;
+use Spoom\Core\Helper\StreamInterface;
 
 /**
  * Interface MessageInterface

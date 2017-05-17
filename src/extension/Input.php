@@ -1,10 +1,10 @@
 <?php namespace Spoom\Http;
 
-use Spoom\Framework\Storage;
-use Spoom\Framework;
+use Spoom\Core\Storage;
+use Spoom\Core;
 use Spoom\Http\Message\RequestInterface;
-use Spoom\Framework\Exception;
-use Spoom\Framework\Helper;
+use Spoom\Core\Exception;
+use Spoom\Core\Helper;
 
 /**
  * Class Input
@@ -47,8 +47,8 @@ class Input extends Storage {
 
       // collect available converters
       $map                = [ 'multipart/form-data' => new Converter\Multipart(), 'application/x-www-form-urlencoded' => new Converter\Query() ];
-      $map[ 'text/json' ] = $map[ 'application/json' ] = new Framework\Converter\Json();
-      $map[ 'text/xml' ]  = $map[ 'application/xml' ] = new Framework\Converter\Xml();
+      $map[ 'text/json' ] = $map[ 'application/json' ] = new Core\Converter\Json();
+      $map[ 'text/xml' ]  = $map[ 'application/xml' ] = new Core\Converter\Xml();
       $map                = $converters + $map;
 
       // process the body
@@ -63,7 +63,7 @@ class Input extends Storage {
     }
 
     // merge the "public" and "private" storages
-    $this[ self::NAMESPACE_REQUEST . ':' ] = Framework\Helper\Enumerable::merge(
+    $this[ self::NAMESPACE_REQUEST . ':' ] = Core\Helper\Collection::merge(
       $this->getArray( self::NAMESPACE_URI . ':' ),
       $this->getArray( self::NAMESPACE_BODY . ':' )
     );
@@ -90,11 +90,11 @@ class InputExceptionBody extends Exception\Runtime {
     $message = in_array( $format, $allow ) ? "HTTP request's body is in an unknown format ({format})" : "HTTP request's body can't be processed as '{format}'";
 
     parent::__construct(
-      Helper\Text::insert( $message, $data ),
+      Helper\Text::apply( $message, $data ),
       static::ID,
       $data,
       $throwable,
-      Framework\Application::SEVERITY_NOTICE
+      Core\Application::SEVERITY_NOTICE
     );
   }
 }

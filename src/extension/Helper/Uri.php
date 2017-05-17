@@ -1,9 +1,9 @@
 <?php namespace Spoom\Http\Helper;
 
-use Spoom\Framework\Exception;
+use Spoom\Core\Exception;
 use Spoom\Http\Extension;
-use Spoom\Framework\Helper;
-use Spoom\Framework\Helper\Text;
+use Spoom\Core\Helper;
+use Spoom\Core\Helper\Text;
 
 /**
  * Interface UriInterface
@@ -329,7 +329,7 @@ class Uri implements Helper\AccessableInterface, UriInterface {
       }
     }
 
-    return Text::insert( $string, $component );
+    return Text::apply( $string, $component );
   }
 
   /**
@@ -424,8 +424,7 @@ class Uri implements Helper\AccessableInterface, UriInterface {
   //
   public function setPort( ?int $value ) {
     if( is_null( $value ) ) unset( $this->_component[ self::COMPONENT_PORT ] );
-    else if( !is_numeric( $value ) ) throw new \InvalidArgumentException( "Port must be numeric, not {$value}" );
-    else $this->_component[ self::COMPONENT_PORT ] = (int) $value;
+    else $this->_component[ self::COMPONENT_PORT ] = $value;
 
     return $this;
   }

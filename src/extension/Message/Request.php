@@ -1,6 +1,6 @@
 <?php namespace Spoom\Http\Message;
 
-use Spoom\Framework\Helper\StreamInterface;
+use Spoom\Core\Helper\StreamInterface;
 use Spoom\Http\Helper\Uri;
 use Spoom\Http\Message;
 use Spoom\Http\MessageInterface;

@@ -3,17 +3,17 @@
   "description": "HTTP support for Spoom Framework",
   "keywords": [ "spoom", "framework", "http" ],
   "type": "spoom-extension",
+  "license": "MIT",
   "authors": [
     {
-      "name": "Nagy Samu",
-      "email": "nagy.samu222@gmail.com"
+      "name": "Nagy Samu"
     }
   ],
-  
+
   "require": {
     "php": "^7.1.0",
     "spoom-php/composer": "^1.0.0",
-    "spoom-php/framework": "@dev"
+    "spoom-php/core": "@dev"
   },
   "require-dev": {
     "phpunit/phpunit": "^6.0",
@@ -22,9 +22,9 @@
   },
 
   "autoload": {
-    "psr-4": {"Spoom\\Http\\": "src/extension/"}
+    "psr-4": { "Spoom\\Http\\": "src/extension/" }
   },
   "autoload-dev": {
-    "psr-4": {"Spoom\\Http\\": "test/"}
+    "psr-4": { "Spoom\\Http\\": "test/" }
   }
 }

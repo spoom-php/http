@@ -1,23 +1,18 @@
 <?php namespace Spoom\Http\Converter;
 
-use Spoom\Framework\Helper;
-use Spoom\Framework;
+use Spoom\Core\Helper;
+use Spoom\Core;
 
 /**
  * Class Query
  *
- * TODO handle exceptions
- * TODO check for input restrictions
- * TODO decide how to handle arrays (CGI or PHP way)
+ * TODO create tests
  *
  * @package Spoom\Http\Converter
  */
-class Query implements Framework\ConverterInterface, Helper\AccessableInterface {
+class Query implements Core\ConverterInterface, Helper\AccessableInterface {
   use Helper\Accessable;
   use Helper\Failable;
-
-  const FORMAT = 'url-query';
-  const NAME   = '';
 
   /**
    * @var QueryMeta
@@ -25,12 +20,11 @@ class Query implements Framework\ConverterInterface, Helper\AccessableInterface 
   private $_meta;
 
   /**
-   * @param QueryMeta|int $options
-   * @param int           $depth
-   * @param bool          $associative
+   * @param QueryMeta|int $encoding
+   * @param string        $separator
    */
-  public function __construct( $options = JSON_PARTIAL_OUTPUT_ON_ERROR, int $depth = 512, bool $associative = false ) {
-    $this->_meta = $options instanceof QueryMeta ? $options : new QueryMeta( $options, $depth, $associative );
+  public function __construct( $encoding = PHP_QUERY_RFC3986, string $separator = '&' ) {
+    $this->_meta = $encoding instanceof QueryMeta ? $encoding : new QueryMeta( $encoding, $separator );
   }
   /**
    *
@@ -43,13 +37,16 @@ class Query implements Framework\ConverterInterface, Helper\AccessableInterface 
   public function serialize( $content, ?Helper\StreamInterface $stream = null ):?string {
     $this->setException();
 
-    $result = http_build_query( $content, null, '&', PHP_QUERY_RFC3986 );
-    if( !$stream ) return $result;
+    // this converter can only serialize collections
+    if( !Helper\Collection::is( $content ) ) $this->setException( new \InvalidArgumentException( 'Content must be a valid collection' ) );
     else {
 
-      $stream->write( $result );
-      return null;
+      $result = http_build_query( $content, null, $this->getMeta()->separator, $this->getMeta()->encoding );
+      if( !$stream ) return $result;
+      else $stream->write( $result );
     }
+
+    return null;
   }
   //
   public function unserialize( $content ) {
@@ -60,8 +57,10 @@ class Query implements Framework\ConverterInterface, Helper\AccessableInterface 
       $content = $content->read();
     }
 
-    $result = [];
-    parse_str( $content, $result );
+    $result  = [];
+    $content = Helper\Text::read( $content, null );
+    if( $content === null ) $this->setException( new \InvalidArgumentException( 'Content must be a valid text' ) );
+    else parse_str( $content, $result );
 
     return $result;
   }
@@ -76,6 +75,7 @@ class Query implements Framework\ConverterInterface, Helper\AccessableInterface 
    * @param QueryMeta $value
    *
    * @return $this
+   * @throws \InvalidArgumentException
    */
   public function setMeta( $value ) {
     if( !( $value instanceof QueryMeta ) ) throw new \InvalidArgumentException( 'Meta must be a subclass of ' . QueryMeta::class, $value );
@@ -83,28 +83,13 @@ class Query implements Framework\ConverterInterface, Helper\AccessableInterface 
 
     return $this;
   }
-
-  //
-  public function getFormat(): string {
-    return static::FORMAT;
-  }
-  //
-  public function getName(): string {
-    return static::NAME;
-  }
 }
 /**
  * Class QueryMeta
- * @package Framework\Converter
+ * @package Core\Converter
  */
 class QueryMeta {
 
-  /**
-   * Numeric prefix for serialize
-   *
-   * @var string|null
-   */
-  public $prefix = null;
   /**
    * Encoding for serialization
    *
@@ -121,11 +106,9 @@ class QueryMeta {
   /**
    * @param int         $encoding
    * @param string      $separator
-   * @param null|string $prefix
    */
-  public function __construct( int $encoding = PHP_QUERY_RFC3986, string $separator = '&', ?string $prefix = null ) {
+  public function __construct( int $encoding = PHP_QUERY_RFC3986, string $separator = '&' ) {
     $this->encoding  = $encoding;
     $this->separator = $separator;
-    $this->prefix    = $prefix;
   }
 }

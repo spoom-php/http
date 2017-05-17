@@ -1,6 +1,6 @@
 <?php namespace Spoom\Http\Message;
 
-use Spoom\Framework\Helper\StreamInterface;
+use Spoom\Core\Helper\StreamInterface;
 use Spoom\Http\Message;
 use Spoom\Http\MessageInterface;
 
@@ -218,7 +218,7 @@ class Response extends Message implements ResponseInterface {
    * @param array                $header
    * @param StreamInterface|null $body
    */
-  public function __construct( int $status = self::STATUS_OK, array $header = [], ?StreamInterface $body = null ) {
+  public function __construct( ?StreamInterface $body = null, int $status = self::STATUS_OK, array $header = [] ) {
 
     $this->setBody( $body );
     $this->setHeader( $header );

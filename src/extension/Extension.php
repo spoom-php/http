@@ -1,10 +1,11 @@
 <?php namespace Spoom\Http;
 
+use Spoom\Core;
+
 /**
  * Class Extension
- * @package Spoom\Http
  */
-class Extension extends \Spoom\Framework\Extension {
+class Extension extends Core\Extension {
 
   const ID   = 'spoom-http';
   const ROOT = __DIR__ . '/../';

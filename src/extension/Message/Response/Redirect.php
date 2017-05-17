@@ -1,6 +1,6 @@
 <?php namespace Spoom\Http\Message\Response;
 
-use Spoom\Framework\Helper\StreamInterface;
+use Spoom\Core\Helper\StreamInterface;
 use Spoom\Http\Helper\Uri;
 use Spoom\Http\Helper\UriInterface;
 use Spoom\Http\Message;
@@ -21,8 +21,8 @@ class Redirect extends Message\Response {
   protected $_uri;
 
   //
-  public function __construct( int $status = self::STATUS_OTHER, array $header = [], ?StreamInterface $body = null ) {
-    parent::__construct( $status, $header, $body );
+  public function __construct( ?StreamInterface $body = null, int $status = self::STATUS_OTHER, array $header = [] ) {
+    parent::__construct( $body, $status, $header );
   }
 
   /**

@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use Spoom\Http\Helper\Uri;
-use Spoom\Framework\Helper;
+use Spoom\Core\Helper;
 
 class HttpMessageTest extends TestCase {
 

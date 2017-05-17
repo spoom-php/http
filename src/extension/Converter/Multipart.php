@@ -1,19 +1,21 @@
 <?php namespace Spoom\Http\Converter;
 
-use Spoom\Framework\Application;
-use Spoom\Framework\Exception;
-use Spoom\Framework\Helper;
-use Spoom\Framework\Helper\StreamInterface;
-use Spoom\Framework;
+use Spoom\Core\Application;
+use Spoom\Core\Exception;
+use Spoom\Core\Helper;
+use Spoom\Core\Helper\StreamInterface;
+use Spoom\Core;
+use Spoom\Core\Helper\Text;
 
 /**
  * Class Multipart
  *
  * FIXME better specification support (http://www.w3.org/Protocols/rfc1341/7_2_Multipart.html) with more abstraction
+ * TODO create tests
  *
  * @package Spoom\Http\Helper
  */
-class Multipart implements Framework\ConverterInterface, Helper\AccessableInterface {
+class Multipart implements Core\ConverterInterface, Helper\AccessableInterface {
   use Helper\Accessable;
   use Helper\Failable;
 
@@ -44,11 +46,6 @@ class Multipart implements Framework\ConverterInterface, Helper\AccessableInterf
   const CHUNK = 4096;
 
   /**
-   * @var resource[]
-   */
-  private static $resource = [];
-
-  /**
    *
    *
    *
@@ -70,107 +67,37 @@ class Multipart implements Framework\ConverterInterface, Helper\AccessableInterf
   public function unserialize( $content ) {
     $this->setException();
 
-    $raw = $result = [];
+    $raw = [];
 
-    // process the multipart data into the raw containers (to process the array names later)
+    // process the multipart data into associative array
     $data = $this->read( Helper\Stream::instance( $content ) );
     foreach( $data as $value ) {
-      if( isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ) {
 
-        $tmp = [
-          'name'     => $value->meta[ 'content-disposition' ][ 'filename' ],
-          'type'     => isset( $value->meta[ 'content-type' ][ 'value' ] ) ? $value->meta[ 'content-type' ][ 'value' ] : '',
-          'size'     => null,
-          'tmp_name' => null,
-          'error'    => UPLOAD_ERR_OK
-        ];
-
-        // setup content related values 
-        if( is_resource( $value->content ) ) {
-
-          $tmp[ 'tmp_name' ] = stream_get_meta_data( $value->content )[ 'uri' ];
-          $tmp[ 'size' ]     = $tmp[ 'tmp_name' ] && is_file( $tmp[ 'tmp_name' ] ) ? filesize( $tmp[ 'tmp_name' ] ) : 0;
-        }
-
-        // calculate file errors
-        if( empty( $tmp[ 'tmp_name' ] ) ) $tmp[ 'error' ] = UPLOAD_ERR_CANT_WRITE;
-        else if( empty( $tmp[ 'size' ] ) ) $tmp[ 'error' ] = UPLOAD_ERR_NO_FILE;
-        else ; // FIXME maybe check the file size for overflow
-
-        $raw[] = [
-          'name'  => $value->meta[ 'content-disposition' ][ 'name' ],
-          'value' => $tmp
-        ];
-
-      } else {
-        $raw[] = [
-          'name'  => $value->meta[ 'content-disposition' ][ 'name' ],
-          'value' => $value->content
-        ];
-      }
+      // TODO Support access to metadata somehow
+      $key         = $value->meta[ 'content-disposition' ][ 'name' ];
+      $raw[ $key ] = isset( $value->meta[ 'content-disposition' ][ 'filename' ] ) ? $value->content : (string) $value->content;
     }
 
-    // parse the post names
+    // process sub-arrays (defined by keys)
     if( count( $raw ) ) {
 
+      // build a query string from with the keys
       $query = '';
       foreach( $raw as $key => $value ) {
-        $query .= '&' . $value[ 'name' ] . '=' . urlencode( $key );
+        $query .= '&' . $key . '=' . urlencode( $key );
       }
 
+      // parse query string and fill it from the raw array 
       $keys = [];
       parse_str( substr( $query, 1 ), $keys );
       array_walk_recursive( $keys, function ( &$key ) use ( $raw ) {
-        $key = $raw[ $key ][ 'value' ];
+        $key = $raw[ $key ];
       } );
 
-      $result += $keys;
+      return $keys;
     }
 
-    return $result;
-  }
-
-  public function read( StreamInterface $input ): array {
-    $result = [];
-    $buffer = '';
-
-    // first find the separator string (boundary)
-    $boundary = $this->next( $input, self::SEPARATOR_LINE, $buffer );
-    if( !empty( $boundary ) ) while( true ) {
-
-      // the first lines (min 1) is the headers of the value
-      $headers = [];
-      while( true ) {
-
-        // read until we find a line that is not header (empty line)
-        $tmp = $this->next( $input, self::SEPARATOR_LINE, $buffer );
-        if( $tmp == '' ) break;
-
-        $this->header( $tmp, $headers );
-      }
-
-      // read the last "line" which will be the content. The files is readed to a temp file instead of the memory
-      if( !isset( $headers[ 'content-disposition' ][ 'filename' ] ) ) $value = $this->next( $input, self::SEPARATOR_LINE . $boundary, $buffer );
-      else {
-
-        $value = $this->next( $input, self::SEPARATOR_LINE . $boundary, $buffer, tmpfile() );
-        if( is_resource( $value ) ) self::$resource[] = $value;
-      }
-
-      // save the multipart data
-      $result[] = new MultipartData( $value, $headers );
-
-      // check the multipart data' end
-      $last = $this->next( $input, self::SEPARATOR_LINE, $buffer );
-      if( $last == self::SEPARATOR_END ) break;
-
-      // check for invalid multipart message
-      if( $buffer == '' && feof( $input->getResource() ) ) {
-        throw new MultipartExceptionInvalid( $input->read( 0, 0 ) );
-      }
-    }
-
-    return $result;
+    return [];
   }
 
   /**
@@ -179,7 +106,7 @@ class Multipart implements Framework\ConverterInterface, Helper\AccessableInterf
    * @param string $tmp
    * @param array  $headers
    */
-  private function header( string $tmp, array &$headers ) {
+  protected function header( string $tmp, array &$headers ) {
 
     // process the header into name and content
     list( $name, $content ) = explode( self::SEPARATOR_HEAD_CONTENT, $tmp );
@@ -198,44 +125,78 @@ class Multipart implements Framework\ConverterInterface, Helper\AccessableInterf
     $headers[ mb_strtolower( $name ) ] = $options;
   }
   /**
+   * @param StreamInterface $input
+   *
+   * @return array An array of multipart data
+   * @throws MultipartExceptionInvalid
+   */
+  protected function read( StreamInterface $input ): array {
+    $result = [];
+    $buffer = '';
+
+    // first find the separator string (boundary)
+    $boundary = $this->next( $input, self::SEPARATOR_LINE, $buffer );
+    if( !empty( $boundary ) ) while( true ) {
+
+      // the first lines (min 1) is the headers of the value
+      $headers = [];
+      while( true ) {
+
+        // read until we find a line that is not header (empty line)
+        $tmp = $this->next( $input, self::SEPARATOR_LINE, $buffer );
+        if( $tmp == '' ) break;
+
+        $this->header( $tmp, $headers );
+      }
+
+      // save the multipart data
+      $value    = $this->next( $input, self::SEPARATOR_LINE . $boundary, $buffer );
+      $result[] = MultipartData::instance( [ 'content' => $value, 'meta' => $headers ] );
+
+      // check the multipart data' end
+      $last = $this->next( $input, self::SEPARATOR_LINE, $buffer );
+      if( $last == self::SEPARATOR_END ) break;
+
+      // check for invalid multipart message
+      if( $buffer == '' && $input->isEnd() ) {
+        throw new MultipartExceptionInvalid( $input->read( 0, 0 ) );
+      }
+    }
+
+    return $result;
+  }
+  /**
    * Read the input stream into a stream or memory until a string
    *
-   * @param StreamInterface $stream
-   * @param string          $stop    The string that will stop the reading
-   * @param string          $buffer  The remain content from the stream after the $stop (readed from the stream and not used)
-   * @param resource|null   $content A stream to write the content. If null the result will be a string
+   * @param StreamInterface $input
+   * @param string          $stop   The string that will stop the reading
+   * @param string          $buffer The remain content from the stream after the $stop (readed from the stream and not used)
    *
-   * @return resource|string The $content or a string
+   * @return StreamInterface The $content or a string
    */
-  private function next( StreamInterface $stream, string $stop, string &$buffer, $content = null ) {
+  private function next( StreamInterface $input, string $stop, string &$buffer ): StreamInterface {
 
     $stop_size = strlen( $stop );
-    $string    = false;
-    if( $content === null ) {
-      $string  = true;
-      $content = fopen( 'php://memory', 'w+' );
-    }
+    $output    = new Helper\Stream( 'php://temp', Helper\Stream::MODE_RW );
 
     // read until the stop string
     while( ( $position = strpos( $buffer, $stop ) ) === false ) {
 
-      $tmp = $stream->read( $stop_size > self::CHUNK ? $stop_size : self::CHUNK );
+      $tmp = $input->read( $stop_size > self::CHUNK ? $stop_size : self::CHUNK );
       if( !$tmp ) break;
       else {
 
         // remove the "safe" (doesn't include the stop string) string from the buffer into the content for optimalisation
-        $safe = substr( $buffer, 0, -$stop_size );
-        if( is_resource( $content ) ) fwrite( $content, $safe );
+        $output->write( ( $safe = substr( $buffer, 0, -$stop_size ) ) );
         $buffer = substr( $buffer, -$stop_size ) . $tmp;
       }
     }
 
     // remove the final "safe" (doesn't include the stop string) string from the buffer into the content
-    if( is_resource( $content ) ) fwrite( $content, substr( $buffer, 0, $position ) );
+    $output->write( substr( $buffer, 0, $position ) );
     $buffer = substr( $buffer, $position + $stop_size );
 
-    if( is_resource( $content ) ) rewind( $content );
-    return $string ? stream_get_contents( $content ) : $content;
+    return $output->seek( 0 );
   }
 
   //
@@ -249,44 +210,21 @@ class Multipart implements Framework\ConverterInterface, Helper\AccessableInterf
 }
 /**
  * Class MultipartData
- * @package Spoom\Http\Helper
- *
- * @property-read array           $meta
- * @property-read string|resource $content
  */
-class MultipartData implements Helper\AccessableInterface {
-  use Helper\Accessable;
-
+class MultipartData extends Helper\Structure {
+  
   /**
    * @var array
    */
-  private $_meta;
+  public $meta;
   /**
-   * @var string|resource
+   * @var StreamInterface
    */
-  private $_content;
+  public $content;
 
-  /**
-   * @param string|resource $content
-   * @param array           $meta
-   */
-  public function __construct( $content, array $meta ) {
-
-    $this->_meta    = $meta;
-    $this->_content = $content;
-  }
-
-  /**
-   * @return array
-   */
-  public function getMeta(): array {
-    return $this->_meta;
-  }
-  /**
-   * @return string|resource
-   */
-  public function getContent() {
-    return $this->_content;
+  //
+  function __toString() {
+    return Text::read( $this->content );
   }
 }
 

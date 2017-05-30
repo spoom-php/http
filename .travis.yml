@@ -1,0 +1,25 @@
+language: php
+
+sudo: false
+
+branches:
+  only:
+  - master
+  - development
+  - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
+
+php:
+  - 7.1
+  - nightly
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - php: nightly
+
+before_script:
+      - composer self-update
+      - composer install --prefer-dist --no-interaction
+
+script:
+    - vendor/bin/phpunit -c test/phpunit.xml

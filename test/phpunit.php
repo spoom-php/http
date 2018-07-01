@@ -9,5 +9,5 @@ $spoom = new Application(
   Application::ENVIRONMENT_DEVELOPMENT,
   'en',
   ( $tmp = new File( __DIR__ ) ),
-  new Core\Log( $tmp->get( 'tmp/' ), 'unittest', Application::SEVERITY_DEBUG )
+  new Core\Logger( $tmp->get( 'tmp/' ), 'unittest', Application::SEVERITY_DEBUG )
 );

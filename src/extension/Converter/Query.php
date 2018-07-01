@@ -12,7 +12,6 @@ use Spoom\Core;
  */
 class Query implements Core\ConverterInterface, Helper\AccessableInterface {
   use Helper\Accessable;
-  use Helper\Failable;
 
   /**
    * @var QueryMeta
@@ -35,10 +34,9 @@ class Query implements Core\ConverterInterface, Helper\AccessableInterface {
 
   //
   public function serialize( $content, ?Helper\StreamInterface $stream = null ):?string {
-    $this->setException();
 
     // this converter can only serialize collections
-    if( !Helper\Collection::is( $content ) ) $this->setException( new \InvalidArgumentException( 'Content must be a valid collection' ) );
+    if( !Helper\Collection::is( $content ) ) throw new \InvalidArgumentException( 'Content must be a valid collection' );
     else {
 
       $result = http_build_query( $content, null, $this->getMeta()->separator, $this->getMeta()->encoding );
@@ -50,7 +48,6 @@ class Query implements Core\ConverterInterface, Helper\AccessableInterface {
   }
   //
   public function unserialize( $content ) {
-    $this->setException();
 
     // handle stream input
     if( $content instanceof Helper\StreamInterface ) {
@@ -59,7 +56,7 @@ class Query implements Core\ConverterInterface, Helper\AccessableInterface {
 
     $result  = [];
     $content = Helper\Text::read( $content, null );
-    if( $content === null ) $this->setException( new \InvalidArgumentException( 'Content must be a valid text' ) );
+    if( $content === null ) throw new \InvalidArgumentException( 'Content must be a valid text' );
     else parse_str( $content, $result );
 
     return $result;

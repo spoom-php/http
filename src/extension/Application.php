@@ -33,7 +33,7 @@ class Application extends Core\Application {
       $input = $input ?? static::getInput( new Input( $request ) );
 
       //
-      $extension->log->debug( "HTTP request is started for ({id}) '{method} {url}'", [
+      $extension->getLogger()->debug( "HTTP request is started for ({id}) '{method} {url}'", [
         'method' => strtoupper( $request->getMethod() ),
         'url'    => (string) $request->getUri(),
         'id'     => $this->id,
@@ -49,7 +49,7 @@ class Application extends Core\Application {
     } catch( \Throwable $e ) {
 
       //
-      Core\Exception::log( $e, Http\Extension::instance()->log );
+      Core\Exception::log( $e, Http\Extension::instance()->getLogger() );
 
       // set status message accordingly to the exception's type
       if( $e instanceof Http\Exception ) $status = $e->getStatus();
@@ -59,7 +59,7 @@ class Application extends Core\Application {
     }
 
     //
-    $extension->log->debug( "HTTP response for the ({id}) '{method} {url}' request is '{reason}' ({status})", [
+    $extension->getLogger()->debug( "HTTP response for the ({id}) '{method} {url}' request is '{reason}' ({status})", [
       'method' => strtoupper( $request->getMethod() ),
       'url'    => (string) $request->getUri(),
       'id'     => $this->getId(),
@@ -202,7 +202,7 @@ class Application extends Core\Application {
   public static function response( Message\ResponseInterface $response, Message\RequestInterface $request ) {
 
     // setup headers from the response
-    if( headers_sent() ) Http\Extension::instance()->log->warning( 'HTTP headers already sent', [ 'response' => $response, 'request' => $request ] );
+    if( headers_sent() ) Http\Extension::instance()->getLogger()->warning( 'HTTP headers already sent', [ 'response' => $response, 'request' => $request ] );
     else {
 
       // 

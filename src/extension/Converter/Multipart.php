@@ -17,7 +17,6 @@ use Spoom\Core\Helper\Text;
  */
 class Multipart implements Core\ConverterInterface, Helper\AccessableInterface {
   use Helper\Accessable;
-  use Helper\Failable;
 
   /**
    * Line separator
@@ -46,10 +45,6 @@ class Multipart implements Core\ConverterInterface, Helper\AccessableInterface {
   const CHUNK = 4096;
 
   /**
-   *
-   *
-   *
-   * @throws Exception
    */
   public function __construct() {
 
@@ -57,16 +52,12 @@ class Multipart implements Core\ConverterInterface, Helper\AccessableInterface {
 
   //
   public function serialize( $content, ?Helper\StreamInterface $stream = null ):?string {
-    $this->setException();
 
     // TODO implement!
-    $this->setException( new \LogicException( "Not implemented, yet" ) );
-    return null;
+    throw new \LogicException( "Not implemented, yet" );
   }
   //
   public function unserialize( $content ) {
-    $this->setException();
-
     $raw = [];
 
     // process the multipart data into associative array
@@ -211,7 +202,7 @@ class Multipart implements Core\ConverterInterface, Helper\AccessableInterface {
 /**
  * Class MultipartData
  */
-class MultipartData extends Helper\Structure {
+class MultipartData extends Helper\Wrapper {
   
   /**
    * @var array

@@ -54,11 +54,10 @@ class Input extends Storage {
       // process the body
       $converter = $map[ $format ] ?? null;
       if( empty( $converter ) ) throw new InputExceptionBody( $format, array_keys( $map ) );
-      else {
-
-        $tmp = $converter->unserialize( $request->getBody() );
-        if( $converter->getException() ) throw new InputExceptionBody( $format, array_keys( $map ), $converter->getException() );
-        else $this[ self::NAMESPACE_BODY . ':' ] = $tmp;
+      else try {
+        $this[ self::NAMESPACE_BODY . ':' ] = $converter->unserialize( $request->getBody() );
+      } catch( Core\ConverterFailException $e ) {
+        throw new InputExceptionBody( $format, array_keys( $map ), $e );
       }
     }
 
